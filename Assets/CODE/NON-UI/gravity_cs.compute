@@ -1,0 +1,450 @@
+#pragma kernel CSMain
+#pragma kernel AddorRemoveDots
+#pragma kernel UpdateLOD
+#pragma kernel CopyBuffer
+
+struct dotData
+{
+    float3 color;
+    float2 position;
+    float2 velocity;
+    float mass;
+};
+
+struct changeDotsStr
+{
+    uint changeID;
+    float radius;
+    float2 centerPos;
+    float changeDataMass;
+    float2 changeDataVel;
+    float3 changeDataCol;
+    uint completedCopying;
+    /*
+
+    changeID:
+    0: Add
+    1: Remove
+    2: Change color
+    3: Change mass
+    
+    69: Nothing
+    */
+};
+
+struct LOD_str
+{
+    float2 position;
+    float2 localCenterOfMass;
+    float mass;
+
+    /*
+    LOD Sizes:
+    0: 0.5x0.5
+    1: 2x2     (x4)
+    2: 4x4     (x2)
+    3: 8x8     (x2)
+    4: 16x16   (x2)
+    5: 32x32   (x2)
+    */
+
+};
+
+struct miscellaneousData
+{
+    int dotCount;
+    int freeSpace;
+    int newDotAmount;
+    int newDotIndex;
+};
+
+struct Debug
+{
+    float2 DebugMatrix_n0;
+    float2 DebugMatrix_n1;
+    float2 DebugMatrix_n2;
+    float2 DebugMatrix_n3;
+};
+
+
+float fixedDeltaTime;
+
+
+float G; 
+static const float PI = 3.14159265358979323846;
+static const int ThreadSize = 32;
+int DEBUGMODE = 0;
+int CopyID;
+
+
+
+RWStructuredBuffer<dotData> inputData;     // Copy ID: 0
+RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 7
+
+
+RWStructuredBuffer<LOD_str> LOD0;          // Copy ID: 1
+RWStructuredBuffer<LOD_str> LOD1;          // Copy ID: 2
+RWStructuredBuffer<LOD_str> LOD2;          // Copy ID: 3
+RWStructuredBuffer<LOD_str> LOD3;          // Copy ID: 4
+RWStructuredBuffer<LOD_str> LOD4;          // Copy ID: 5
+RWStructuredBuffer<LOD_str> LOD5;          // Copy ID: 6
+RWStructuredBuffer<LOD_str> LOD0_TMP;      // Copy ID: 8
+RWStructuredBuffer<LOD_str> LOD1_TMP;      // Copy ID: 9
+RWStructuredBuffer<LOD_str> LOD2_TMP;      // Copy ID: 10
+RWStructuredBuffer<LOD_str> LOD3_TMP;      // Copy ID: 11
+RWStructuredBuffer<LOD_str> LOD4_TMP;      // Copy ID: 12
+RWStructuredBuffer<LOD_str> LOD5_TMP;      // Copy ID: 13
+
+
+RWStructuredBuffer<changeDotsStr> changeDots;
+RWStructuredBuffer<miscellaneousData> miscData;
+RWStructuredBuffer<Debug> debugData;
+
+
+groupshared float2 calcForce[ThreadSize];
+
+
+float random(float2 p){
+
+    float2 K1 = float2(
+        23.14069263277926, // e^pi (Gelfond's constant)
+         2.665144142690225 // 2^sqrt(2) (Gelfond–Schneider constant)
+    );
+    return (cos(dot(p, K1)) * 12345.6789);
+}
+
+[numthreads(4, 4, 2)]
+void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+
+    uint DispatchGroupIndex = GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize; //index of the current group
+    
+    int currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    float2 currVelo = inputData[DispatchGroupIndex].velocity;
+    float3 currColo = inputData[DispatchGroupIndex].color;
+    
+    calcForce[GroupIndex] = 0;
+    
+    int dotCount = miscData[0].dotCount;
+    
+    int B = 0;
+    int E = 0;
+    
+    int Start_cord = 0;
+    int End_cord = 0;
+    int Diff = 0;
+
+    // calculate everybodies forces
+    if (DispatchGroupIndex <= dotCount)
+    {
+        B = floor((dotCount - 1.0) / ThreadSize);
+        E = (dotCount - 1.0) % ThreadSize;
+    
+        Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+    
+        Diff = abs(End_cord - Start_cord) + 1;
+                
+        
+        
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            float Current_Target_Mass = inputData[Current_Target_index].mass;
+
+            if (Current_Target_Mass == 0) { continue; } // checks if object is not deleted
+            
+            float2 Current_Target_Poss = inputData[Current_Target_index].position;
+            
+            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y) || distance(currPoss, Current_Target_Poss) < 1) { continue; } 
+            
+            float F = G * ((currMass * Current_Target_Mass) / pow(distance(currPoss, Current_Target_Poss), 2.0)); // (pow(currPoss.x - Current_Target_Poss.x, 2) + pow(currPoss.y - Current_Target_Poss.y, 2))); 
+            float alpha = atan2((currPoss.y - Current_Target_Poss.y), (currPoss.x - Current_Target_Poss.x));
+            
+            calcForce[GroupIndex] += float2(cos(alpha) * F, sin(alpha) * F);
+        }
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    // main thread (which is 0) sums all of the other threads results into one singular result
+    if (GroupIndex == 0)
+    {
+        
+        float2 summForce = float2(0,0);
+        for (int i = 0; i < ThreadSize; i++)
+        {
+            summForce += calcForce[i];
+        }
+        
+        debugData[DispatchGroupIndex].DebugMatrix_n0.x = summForce.x;
+        debugData[DispatchGroupIndex].DebugMatrix_n0.y = summForce.y;
+        
+        //Conevert calculated force to bodies velocity
+        
+        float2 velocityDelta = (summForce * fixedDeltaTime) / currMass;
+
+        currVelo += velocityDelta;
+        
+        debugData[DispatchGroupIndex].DebugMatrix_n1.x = currVelo.x;
+        debugData[DispatchGroupIndex].DebugMatrix_n1.y = currVelo.y;
+        
+        currPoss -= currVelo;
+        
+
+    }
+    
+    
+    // debug output
+    if (GroupIndex == 0 && DEBUGMODE == 1)
+    {
+
+
+        debugData[DispatchGroupIndex].DebugMatrix_n2.x = 0;
+        debugData[DispatchGroupIndex].DebugMatrix_n2.y = 0;
+        debugData[DispatchGroupIndex].DebugMatrix_n3.x = 0;
+        debugData[DispatchGroupIndex].DebugMatrix_n3.y = 0;
+    }
+
+    
+    GroupMemoryBarrierWithGroupSync();
+    
+    // output
+    if (GroupIndex == 0)
+    {
+        inputData[DispatchGroupIndex].color = currColo;
+        inputData[DispatchGroupIndex].position = currPoss;
+        inputData[DispatchGroupIndex].velocity = currVelo;
+        inputData[DispatchGroupIndex].mass = currMass;
+    }
+}
+
+
+
+[numthreads(4, 4, 2)]
+void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
+    if (changeDots[0].changeID == 69) { return; }
+    
+    miscData[0].dotCount += miscData[0].newDotAmount;
+    miscData[0].newDotAmount = 0;
+
+    int dotCount = miscData[0].dotCount;
+    int freeSpace = miscData[0].freeSpace;
+    int currFreeSpace = 0;
+    int currNewDotIndex = 0;
+    
+    int Start_cord = 0;
+    int End_cord = 0;
+    
+    
+    int B = floor((dotCount - 1.0) / ThreadSize);
+    int E = (dotCount - 1.0) % ThreadSize;
+    
+    
+    Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+    End_cord = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+    
+    
+    // add
+    if (changeDots[0].changeID == 0) 
+    {   
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            if (inputData[Current_Target_index].mass == 0)
+            {
+                if (currNewDotIndex % GroupIndex == 0)
+                {
+                    inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
+                    inputData[Current_Target_index].color = changeDots[0].changeDataCol;
+                    inputData[Current_Target_index].velocity = changeDots[0].changeDataVel;
+                    
+                    //for now positions are random
+                    float alpha = Current_Target_index;
+                    float dist = sqrt(Current_Target_index);
+
+                    inputData[Current_Target_index].position = float2(dist * cos(alpha), dist * sin(alpha)) + changeDots[0].centerPos;
+                    InterlockedAdd(miscData[0].freeSpace, -1);
+                    
+                }
+                currNewDotIndex++;
+            }
+        }
+    }
+    // remove
+    else if (changeDots[0].changeID == 1) 
+    {
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            float2 poss = inputData[Current_Target_index].position;
+            if (distance(changeDots[0].centerPos, poss) <= changeDots[0].radius && inputData[Current_Target_index].mass != 0)
+            {
+                inputData[Current_Target_index].mass = 0;
+                inputData[Current_Target_index].position = float2(0,0);
+                currFreeSpace++;
+            }
+        }
+    }
+    // change color
+    else if (changeDots[0].changeID == 2) 
+    {
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            float2 poss = inputData[Current_Target_index].position;
+            if (distance(changeDots[0].centerPos, poss) <= changeDots[0].radius)
+            {
+                inputData[Current_Target_index].color = changeDots[0].changeDataCol;
+            }
+        }
+    }
+    // change mass
+    else if (changeDots[0].changeID == 3) 
+    {
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            float2 poss = inputData[Current_Target_index].position;
+            if (distance(changeDots[0].centerPos, poss) <= changeDots[0].radius)
+            {
+                inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
+            }
+        }
+    }
+
+    
+    InterlockedAdd(miscData[0].freeSpace, currFreeSpace);
+    miscData[0].newDotIndex = 0;
+}
+
+
+
+[numthreads(4, 4, 2)]
+void UpdateLOD(int GroupIndex : SV_GroupIndex){
+    
+}
+
+
+
+
+[numthreads(64, 1, 1)]
+void CopyBuffer(uint GroupIndex : SV_GroupIndex){
+
+    changeDots[0].completedCopying = 0;
+    uint numStructs = 0;
+    uint stride = 0;
+
+    switch (CopyID)
+    {
+        case 0:
+            inputData.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                inputData[pos] = inputData_TMP[pos];
+            }
+            break;
+        
+        /*
+        case 1:
+            LOD0.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD0[pos] = LOD0_TMP[pos];
+            }
+            break;
+
+        case 2:
+            LOD1.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD1[pos] = LOD1_TMP[pos];
+            }
+            break;
+
+        case 3:
+            LOD2.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD2[pos] = LOD2_TMP[pos];
+            }
+            break;
+
+        case 4:
+            LOD3.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD3[pos] = LOD3_TMP[pos];
+            }
+            break;
+
+        case 5:
+            LOD4.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD4[pos] = LOD4_TMP[pos];
+            }
+            break;
+
+        case 6:
+            LOD5.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD5[pos] = LOD5_TMP[pos];
+            }
+            break;
+*/
+        case 7:
+            inputData_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                inputData_TMP[pos] = inputData[pos];
+            }
+            break;
+
+/*        case 8:
+            LOD0_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD0_TMP[pos] = LOD0[pos];
+            }
+            break;
+
+        case 9:
+            LOD1_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD1_TMP[pos] = LOD1[pos];
+            }
+            break;
+
+        case 10:
+            LOD2_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD2_TMP[pos] = LOD2[pos];
+            }
+            break;
+
+        case 11:
+            LOD3_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD3_TMP[pos] = LOD3[pos];
+            }
+            break;
+
+        case 12:
+            LOD4_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD4_TMP[pos] = LOD4[pos];
+            }
+            break;
+
+        case 13:
+            LOD5_TMP.GetDimensions(numStructs, stride);
+            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            {
+                LOD5_TMP[pos] = LOD5[pos];
+            }
+            break;
+*/
+    }
+    changeDots[0].completedCopying = 1;
+}
