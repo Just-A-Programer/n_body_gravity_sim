@@ -121,12 +121,19 @@ public class gravity_Csharp : MonoBehaviour
     GraphicsBuffer LODBuffer4;
     GraphicsBuffer LODBuffer5;
 
+
     GraphicsBuffer DotBuffer;
     GraphicsBuffer ChangeBuffer;
     GraphicsBuffer miscellaneousBuffer;
     GraphicsBuffer DebugBuffer;
 
     GraphicsBuffer DotBuffer_TMP;
+    GraphicsBuffer LODBuffer0_TMP;
+    GraphicsBuffer LODBuffer1_TMP;
+    GraphicsBuffer LODBuffer2_TMP;
+    GraphicsBuffer LODBuffer3_TMP;
+    GraphicsBuffer LODBuffer4_TMP;
+    GraphicsBuffer LODBuffer5_TMP;
 
 
     //STRUTs
@@ -181,9 +188,24 @@ public class gravity_Csharp : MonoBehaviour
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 4);
         DebugBuffer =         new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * 4 * 2);
 
+        LODBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
 
-        DotBuffer_TMP =       new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
 
+        DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+
+        LODBuffer0_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer1_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer2_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer3_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer4_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        LODBuffer5_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+
+        
 
         dot_kernel =      computeShader.FindKernel("CSMain");
         change_kernel =   computeShader.FindKernel("AddorRemoveDots");
@@ -233,7 +255,7 @@ public class gravity_Csharp : MonoBehaviour
 
             Dotinput[i].color = new Vector3(ColorPreset.r, ColorPreset.g, ColorPreset.b);
             Dotinput[i].position = newpos;
-            Dotinput[i].velocity = math.mul(ForceVector * Mathf.Sqrt((G) / Vector2.Distance(new Vector2(), newpos)), Forcematrix);
+            Dotinput[i].velocity = math.mul(new Vector2(1,1) * Mathf.Sqrt((G) / Vector2.Distance(new Vector2(), newpos)), Forcematrix);
             Dotinput[i].mass = dotMass;
         }
 
@@ -279,7 +301,16 @@ public class gravity_Csharp : MonoBehaviour
             shadowCastingMode = ShadowCastingMode.Off
         };
 
-        RebindGPUBuffers(new bool[5] { false, false, false, true, true });
+        dot_args[0] = (uint)DotMesh.GetIndexCount(0);
+        dot_args[1] = (uint)dotCount;
+        dot_args[2] = (uint)DotMesh.GetIndexStart(0);
+        dot_args[3] = (uint)DotMesh.GetBaseVertex(0);
+        dotargsbuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, dot_args.Length, dot_args.Length * sizeof(uint));
+        dotargsbuffer.SetData(dot_args);
+
+        DotMaterial.SetBuffer("_dotData", DotBuffer);
+
+        //RebindGPUBuffers(new bool[5] { false, false, false, true, true });
 
         // LOD renderer
 
@@ -459,6 +490,10 @@ public class gravity_Csharp : MonoBehaviour
     }
 
 
+    void UpdateLOD(){
+
+    }
+
     void DoItNextFrame(string ID)
     {
         if (ID == "")
@@ -474,9 +509,9 @@ public class gravity_Csharp : MonoBehaviour
         }
         else if (ID == "add Dots ID part 2")
         {
-            DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount + newDotAmount, sizeof(float) * (3 + 2 + 2 + 1));
+            DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount + newDotAmount - freeSpace, sizeof(float) * (3 + 2 + 2 + 1));
 
-            Dotinput = new dot_str_Csharp[dotCount + newDotAmount];
+            Dotinput = new dot_str_Csharp[dotCount + newDotAmount - freeSpace];
 
             DotBuffer.SetData(Dotinput);
 
@@ -577,6 +612,8 @@ public class gravity_Csharp : MonoBehaviour
 
         return sum;
     }
+
+
 
     #region Button functions
 

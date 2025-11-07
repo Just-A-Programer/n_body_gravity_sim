@@ -340,7 +340,6 @@ void CopyBuffer(uint GroupIndex : SV_GroupIndex){
             }
             break;
         
-        /*
         case 1:
             LOD0.GetDimensions(numStructs, stride);
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
@@ -388,7 +387,7 @@ void CopyBuffer(uint GroupIndex : SV_GroupIndex){
                 LOD5[pos] = LOD5_TMP[pos];
             }
             break;
-*/
+
         case 7:
             inputData_TMP.GetDimensions(numStructs, stride);
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
@@ -397,7 +396,7 @@ void CopyBuffer(uint GroupIndex : SV_GroupIndex){
             }
             break;
 
-/*        case 8:
+        case 8:
             LOD0_TMP.GetDimensions(numStructs, stride);
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
             {
@@ -444,7 +443,7 @@ void CopyBuffer(uint GroupIndex : SV_GroupIndex){
                 LOD5_TMP[pos] = LOD5[pos];
             }
             break;
-*/
+
     }
     changeDots[0].completedCopying = 1;
 }
