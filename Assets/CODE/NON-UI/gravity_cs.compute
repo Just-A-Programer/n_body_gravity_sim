@@ -132,10 +132,10 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     
     int Start_cord = 0;
     int End_cord = 0;
-    int Diff = 0;
+
 
     // calculate everybodies forces
-    if (DispatchGroupIndex <= dotCount)
+    if (DispatchGroupIndex <= dotCount && currMass != 0)
     {
         B = floor((dotCount - 1.0) / ThreadSize);
         E = (dotCount - 1.0) % ThreadSize;
@@ -143,8 +143,6 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
         End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
     
-        Diff = abs(End_cord - Start_cord) + 1;
-                
         
         
         for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
