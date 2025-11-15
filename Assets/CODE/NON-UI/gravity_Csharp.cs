@@ -1,4 +1,5 @@
 using System;
+using System.Net.NetworkInformation;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -380,7 +381,9 @@ public class gravity_Csharp : MonoBehaviour
         if (mouse_MODE == 0)
         {
             float r = Mouse_influence_sphere_radius;
-            newDotAmount = 4 * Sigma_func(1, (int)Mathf.Floor(r), f => (int)Mathf.Round(Mathf.Sqrt(r*r - (f-0.5f)*(f-0.5f))));
+
+            newDotAmount = Sigma_func(1, (int)Mathf.Floor(r), f => ((int)Mathf.Floor((2 * MathF.PI) / (2 * MathF.Pow(MathF.Tan(0.5f / f), -1)))));
+            Debug.Log(newDotAmount + "  " + r);
 
             ChangeInput = new changeDotsStr_Csharp[1];
             ChangeInput[0].changeID = 0;
