@@ -17,8 +17,10 @@ public class DebugUI : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (ID == 0) text.text = textstart + (script.dotCount - script.freeSpace).ToString();
+        if (ID == 0) text.text = textstart + script.dotCount.ToString();
         else if (ID == 1) text.text = textstart + script.RENDER_MODE.ToString();
         else if (ID == 2) text.text = textstart + script.MassPresent.ToString();
+        else if (ID == 3) text.text = textstart + script.freeSpace.ToString();
+        else if (ID == 4) text.text = textstart + (script.dotCount - script.freeSpace).ToString();
     }
 }

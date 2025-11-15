@@ -55,7 +55,6 @@ struct miscellaneousData
     int dotCount;
     int freeSpace;
     int newDotAmount;
-    int newDotIndex;
 };
 
 struct Debug
@@ -75,7 +74,6 @@ static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
 int DEBUGMODE = 0;
 int CopyID;
-
 
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
@@ -222,14 +220,11 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     if (changeDots[0].changeID == 69) { return; }
     
-    miscData[0].dotCount += miscData[0].newDotAmount;
-    int currNewDotAmount = miscData[0].newDotAmount;
-    miscData[0].newDotAmount = 0;
+    
 
     int dotCount = miscData[0].dotCount;
     int freeSpace = miscData[0].freeSpace;
     int currFreeSpace = 0;
-    int currNewDotIndex = 0;
 
     int Start_cord = 0;
     int End_cord = 0;
@@ -244,27 +239,57 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     
     
     // add
-    if (changeDots[0].changeID == 0) 
+    if (changeDots[0].changeID == 0 && GroupIndex == 0) 
     {   
-        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        int iteration = 0;
+        
+        for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
         {
             if (inputData[Current_Target_index].mass == 0)
             {
-                if (uint(currNewDotIndex) % uint(GroupIndex) == 0)
-                {
-                    inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
-                    inputData[Current_Target_index].color = changeDots[0].changeDataCol;
-                    inputData[Current_Target_index].velocity = changeDots[0].changeDataVel;
-                    
-                    //for now positions are random
-                    float alpha = Current_Target_index;
-                    float dist = sqrt(Current_Target_index);
-
-                    inputData[Current_Target_index].position = float2(dist * cos(alpha), dist * sin(alpha)) + changeDots[0].centerPos;
-                    InterlockedAdd(miscData[0].freeSpace, -1);
-                    
+                if (miscData[0].newDotAmount <= 0){
+                    miscData[0].newDotAmount = 0;
+                    break;
                 }
-                currNewDotIndex++;
+
+                iteration++;
+                InterlockedAdd(miscData[0].newDotAmount, -1);
+                InterlockedAdd(miscData[0].freeSpace, -1);
+
+                inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
+                inputData[Current_Target_index].color = changeDots[0].changeDataCol;
+                inputData[Current_Target_index].velocity = changeDots[0].changeDataVel;
+                
+                
+                float l = 1;
+                float current_theta = 0; //in radians
+                float beta = 0;
+                float n = 0;
+                
+                float dist = 1;
+                
+                for (int id = 1; id < iteration; id++)
+                {
+                    beta = 2 * (1/tan(0.5/dist));
+                    n = (2 * PI)/beta;
+
+                    if ((id + floor(n)) < iteration){
+                        id += floor(n);
+                        dist++;
+                        current_theta = 2;
+                        continue;
+                    }
+                    else{
+                        float alpha = (2*PI)/floor(n);
+                        current_theta = abs(iteration-id)*alpha;      
+                        current_theta = 1; 
+                        break;         
+                    }
+
+                }
+
+                //current_theta = (iteration-id);
+                inputData[Current_Target_index].position = float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
             }
         }
     }
@@ -310,7 +335,6 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
 
     
     InterlockedAdd(miscData[0].freeSpace, currFreeSpace);
-    miscData[0].newDotIndex = 0;
 }
 
 
@@ -338,6 +362,7 @@ void CopyBuffer1(uint GroupIndex : SV_GroupIndex){
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
             {
                 inputData[pos] = inputData_TMP[pos];
+                miscData[0].dotCount += miscData[0].newDotAmount;
             }
             break;
         case 1:
