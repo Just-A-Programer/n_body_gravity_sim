@@ -1,7 +1,8 @@
 #pragma kernel CSMain
 #pragma kernel AddorRemoveDots
 #pragma kernel UpdateLOD
-#pragma kernel CopyBuffer
+#pragma kernel CopyBuffer1
+#pragma kernel CopyBuffer2
 
 struct dotData
 {
@@ -19,7 +20,6 @@ struct changeDotsStr
     float changeDataMass;
     float2 changeDataVel;
     float3 changeDataCol;
-    uint completedCopying;
     /*
 
     changeID:
@@ -78,22 +78,22 @@ int CopyID;
 
 
 
-RWStructuredBuffer<dotData> inputData;     // Copy ID: 0
-RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 7
+RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
+RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 1   -in copy1
 
+RWStructuredBuffer<LOD_str> LOD0;          // Copy ID: 2   -in copy1
+RWStructuredBuffer<LOD_str> LOD0_TMP;      // Copy ID: 3   -in copy1
+RWStructuredBuffer<LOD_str> LOD1;          // Copy ID: 4   -in copy1
+RWStructuredBuffer<LOD_str> LOD1_TMP;      // Copy ID: 5   -in copy1
+RWStructuredBuffer<LOD_str> LOD2;          // Copy ID: 6   -in copy1
+RWStructuredBuffer<LOD_str> LOD2_TMP;      // Copy ID: 7   -in copy1
+RWStructuredBuffer<LOD_str> LOD3;          // Copy ID: 8   -in copy2
+RWStructuredBuffer<LOD_str> LOD3_TMP;      // Copy ID: 9   -in copy2
+RWStructuredBuffer<LOD_str> LOD4;          // Copy ID: 10  -in copy2
+RWStructuredBuffer<LOD_str> LOD4_TMP;      // Copy ID: 11  -in copy2
+RWStructuredBuffer<LOD_str> LOD5;          // Copy ID: 12  -in copy2
+RWStructuredBuffer<LOD_str> LOD5_TMP;      // Copy ID: 13  -in copy2
 
-RWStructuredBuffer<LOD_str> LOD0;          // Copy ID: 1
-RWStructuredBuffer<LOD_str> LOD1;          // Copy ID: 2
-RWStructuredBuffer<LOD_str> LOD2;          // Copy ID: 3
-RWStructuredBuffer<LOD_str> LOD3;          // Copy ID: 4
-RWStructuredBuffer<LOD_str> LOD4;          // Copy ID: 5
-RWStructuredBuffer<LOD_str> LOD5;          // Copy ID: 6
-RWStructuredBuffer<LOD_str> LOD0_TMP;      // Copy ID: 8
-RWStructuredBuffer<LOD_str> LOD1_TMP;      // Copy ID: 9
-RWStructuredBuffer<LOD_str> LOD2_TMP;      // Copy ID: 10
-RWStructuredBuffer<LOD_str> LOD3_TMP;      // Copy ID: 11
-RWStructuredBuffer<LOD_str> LOD4_TMP;      // Copy ID: 12
-RWStructuredBuffer<LOD_str> LOD5_TMP;      // Copy ID: 13
 
 
 RWStructuredBuffer<changeDotsStr> changeDots;
@@ -125,7 +125,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     
     calcForce[GroupIndex] = 0;
     
-    int dotCount = miscData[0].dotCount;
+    uint dotCount = uint(miscData[0].dotCount);
     
     int B = 0;
     int E = 0;
@@ -225,13 +225,14 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     if (changeDots[0].changeID == 69) { return; }
     
     miscData[0].dotCount += miscData[0].newDotAmount;
+    int currNewDotAmount = miscData[0].newDotAmount;
     miscData[0].newDotAmount = 0;
 
     int dotCount = miscData[0].dotCount;
     int freeSpace = miscData[0].freeSpace;
     int currFreeSpace = 0;
     int currNewDotIndex = 0;
-    
+
     int Start_cord = 0;
     int End_cord = 0;
     
@@ -251,7 +252,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
         {
             if (inputData[Current_Target_index].mass == 0)
             {
-                if (currNewDotIndex % GroupIndex == 0)
+                if (uint(currNewDotIndex) % uint(GroupIndex) == 0)
                 {
                     inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
                     inputData[Current_Target_index].color = changeDots[0].changeDataCol;
@@ -279,6 +280,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
             {
                 inputData[Current_Target_index].mass = 0;
                 inputData[Current_Target_index].position = float2(0,0);
+                inputData[Current_Target_index].velocity = float2(0,0);
                 currFreeSpace++;
             }
         }
@@ -322,16 +324,17 @@ void UpdateLOD(int GroupIndex : SV_GroupIndex){
 
 
 
-
+//from inputdata, LOD0 to LOD2_TMP
 [numthreads(64, 1, 1)]
-void CopyBuffer(uint GroupIndex : SV_GroupIndex){
+void CopyBuffer1(uint GroupIndex : SV_GroupIndex){
 
-    changeDots[0].completedCopying = 0;
     uint numStructs = 0;
     uint stride = 0;
 
     switch (CopyID)
     {
+       
+       
         case 0:
             inputData.GetDimensions(numStructs, stride);
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
@@ -339,111 +342,126 @@ void CopyBuffer(uint GroupIndex : SV_GroupIndex){
                 inputData[pos] = inputData_TMP[pos];
             }
             break;
-        
         case 1:
-            LOD0.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            inputData_TMP.GetDimensions(numStructs, stride);
+            for (uint pos1 = GroupIndex; pos1 < numStructs; pos1 += 64)
             {
-                LOD0[pos] = LOD0_TMP[pos];
+                inputData_TMP[pos1] = inputData[pos1];
             }
             break;
+
+
 
         case 2:
-            LOD1.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            LOD0.GetDimensions(numStructs, stride);
+            for (uint pos2 = GroupIndex; pos2 < numStructs; pos2 += 64)
             {
-                LOD1[pos] = LOD1_TMP[pos];
+                LOD0[pos2] = LOD0_TMP[pos2];
+            }
+            break;
+        case 3:
+            LOD0_TMP.GetDimensions(numStructs, stride);
+            for (uint pos3 = GroupIndex; pos3 < numStructs; pos3 += 64)
+            {
+                LOD0_TMP[pos3] = LOD0[pos3];
             }
             break;
 
-        case 3:
-            LOD2.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                LOD2[pos] = LOD2_TMP[pos];
-            }
-            break;
+
 
         case 4:
+            LOD1.GetDimensions(numStructs, stride);
+            for (uint pos4 = GroupIndex; pos4 < numStructs; pos4 += 64)
+            {
+                LOD1[pos4] = LOD1_TMP[pos4];
+            }
+            break;
+        case 5:
+            LOD1_TMP.GetDimensions(numStructs, stride);
+            for (uint pos5 = GroupIndex; pos5 < numStructs; pos5 += 64)
+            {
+                LOD1_TMP[pos5] = LOD1[pos5];
+            }
+            break;
+
+
+
+        case 6:
+            LOD2.GetDimensions(numStructs, stride);
+            for (uint pos6 = GroupIndex; pos6 < numStructs; pos6 += 64)
+            {
+                LOD2[pos6] = LOD2_TMP[pos6];
+            }
+            break;
+        case 7:
+            LOD2_TMP.GetDimensions(numStructs, stride);
+            for (uint pos7 = GroupIndex; pos7 < numStructs; pos7 += 64)
+            {
+                LOD2_TMP[pos7] = LOD2[pos7];
+            }
+            break;
+
+    }
+}
+
+
+
+
+[numthreads(64, 1, 1)]
+void CopyBuffer2(uint GroupIndex : SV_GroupIndex){
+
+    uint numStructs = 0;
+    uint stride = 0;
+
+    switch (CopyID)
+    {
+        case 8:
             LOD3.GetDimensions(numStructs, stride);
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
             {
                 LOD3[pos] = LOD3_TMP[pos];
             }
             break;
-
-        case 5:
-            LOD4.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                LOD4[pos] = LOD4_TMP[pos];
-            }
-            break;
-
-        case 6:
-            LOD5.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                LOD5[pos] = LOD5_TMP[pos];
-            }
-            break;
-
-        case 7:
-            inputData_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                inputData_TMP[pos] = inputData[pos];
-            }
-            break;
-
-        case 8:
-            LOD0_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                LOD0_TMP[pos] = LOD0[pos];
-            }
-            break;
-
         case 9:
-            LOD1_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            LOD3_TMP.GetDimensions(numStructs, stride);
+            for (uint pos1 = GroupIndex; pos1 < numStructs; pos1 += 64)
             {
-                LOD1_TMP[pos] = LOD1[pos];
+                LOD3_TMP[pos1] = LOD3[pos1];
             }
             break;
+
+
 
         case 10:
-            LOD2_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            LOD4.GetDimensions(numStructs, stride);
+            for (uint pos2 = GroupIndex; pos2 < numStructs; pos2 += 64)
             {
-                LOD2_TMP[pos] = LOD2[pos];
+                LOD4[pos2] = LOD4_TMP[pos2];
+            }
+            break;
+        case 11:
+            LOD4_TMP.GetDimensions(numStructs, stride);
+            for (uint pos3 = GroupIndex; pos3 < numStructs; pos3 += 64)
+            {
+                LOD4_TMP[pos3] = LOD4[pos3];
             }
             break;
 
-        case 11:
-            LOD3_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                LOD3_TMP[pos] = LOD3[pos];
-            }
-            break;
+
 
         case 12:
-            LOD4_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            LOD5.GetDimensions(numStructs, stride);
+            for (uint pos4 = GroupIndex; pos4 < numStructs; pos4 += 64)
             {
-                LOD4_TMP[pos] = LOD4[pos];
+                LOD5[pos4] = LOD5_TMP[pos4];
             }
             break;
-
         case 13:
             LOD5_TMP.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
+            for (uint pos5 = GroupIndex; pos5 < numStructs; pos5 += 64)
             {
-                LOD5_TMP[pos] = LOD5[pos];
+                LOD5_TMP[pos5] = LOD5[pos5];
             }
-            break;
-
+            break;        
     }
-    changeDots[0].completedCopying = 1;
 }

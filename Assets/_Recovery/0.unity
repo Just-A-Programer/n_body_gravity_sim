@@ -5349,7 +5349,7 @@ MonoBehaviour:
   DotMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
   DotMaterial: {fileID: 2100000, guid: 5dd179d5ce5a2bd44be5e94e7f28bfaf, type: 2}
   LODMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  LODMaterial: {fileID: 2100000, guid: 509347520f3ea8149bcded25e5a66674, type: 2}
+  LODMaterial: {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   mouse_MODE: -1
   ColorPreset: {r: 1, g: 1, b: 1, a: 1}
   MassPresent: 1
