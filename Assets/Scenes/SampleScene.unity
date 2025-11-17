@@ -1091,7 +1091,7 @@ Camera:
   far clip plane: 1000
   field of view: 34
   orthographic: 1
-  orthographic size: 100
+  orthographic size: 200
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -5732,7 +5732,7 @@ MonoBehaviour:
   grav_Script: {fileID: 1805250054}
   movement_speed: 10
   sprint_multiplayer: 5
-  scroll_sensitivity: 10
+  scroll_sensitivity: 20
 --- !u!114 &1805250057
 MonoBehaviour:
   m_ObjectHideFlags: 0
