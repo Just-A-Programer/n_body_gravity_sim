@@ -262,32 +262,34 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
                 
                 
                 float l = 1;
-                float current_theta = 0; //in radians
-                float beta = 0;
+                float current_theta = 0.0; //in radians
+                float beta = 0.0;
                 float n = 0;
                 
                 float dist = 1;
                 
                 for (int id = 1; id < iteration; id++)
                 {
-                    beta = 2 * (1/tan(0.5/dist));
+                    beta = 2 * atan(0.5/dist);
                     n = (2 * PI)/beta;
 
+                    //current_theta = iteration; 
                     if ((id + floor(n)) < iteration){
                         id += floor(n);
                         dist++;
-                        current_theta = 2;
-                        continue;
+                        current_theta = beta;
                     }
-                    else{
-                        float alpha = (2*PI)/floor(n);
-                        current_theta = abs(iteration-id)*alpha;      
-                        current_theta = 1; 
+                    else if ((id + floor(n)) >= iteration){
+                        float alpha = (2.0*PI)/floor(n);
+                        current_theta = abs(iteration-id)*alpha;
+                        //current_theta = alpha; 
+                        //current_theta = 1; 
                         break;         
                     }
 
                 }
-
+  
+                //current_theta = iteration; 
                 //current_theta = (iteration-id);
                 inputData[Current_Target_index].position = float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
             }

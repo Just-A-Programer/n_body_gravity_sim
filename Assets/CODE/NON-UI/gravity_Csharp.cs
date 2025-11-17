@@ -265,7 +265,6 @@ public class gravity_Csharp : MonoBehaviour
         else
         {
             freeSpace = dotCount;
-            Debug.Log(dotCount);
         }
 
         //change input
@@ -390,7 +389,6 @@ public class gravity_Csharp : MonoBehaviour
             float r = Mouse_influence_sphere_radius;
 
             newDotAmount = Sigma_func(1, (int)Mathf.Floor(r), f => (int)Mathf.Floor((2 * MathF.PI) / (2 * (float)Math.Atan(0.5f / f))));
-            Debug.Log(newDotAmount);
             ChangeInput = new changeDotsStr_Csharp[1];
             ChangeInput[0].changeID = 0;
             ChangeInput[0].radius = r;
@@ -408,7 +406,6 @@ public class gravity_Csharp : MonoBehaviour
             {
                 if (newDotAmount >= freeSpace)
                 {
-                    Debug.Log("if1");
                     miscData = new miscellaneousData[1];
                     miscellaneousBuffer.GetData(miscData);
                     miscData[0].newDotAmount = newDotAmount;
@@ -421,7 +418,6 @@ public class gravity_Csharp : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log("if2");
                     miscData = new miscellaneousData[1];
                     miscellaneousBuffer.GetData(miscData);
                     miscData[0].newDotAmount = newDotAmount;
@@ -514,7 +510,6 @@ public class gravity_Csharp : MonoBehaviour
         else if (ID == "add Dots ID part 1")
         {
             computeShader.Dispatch(CopyBuff1_kernel, 1, 1, 1);
-            Debug.Log("yay1");
 
             next_frame_id = "add Dots ID part 2";
             return;
@@ -536,7 +531,6 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.SetInt("CopyID", 0);
 
             next_frame_id = "add Dots ID part 3";
-            Debug.Log("yay2");
             
             return;
         }
@@ -546,7 +540,6 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.Dispatch(CopyBuff1_kernel, 1, 1, 1);
 
             next_frame_id = "add Dots ID part 4";
-            Debug.Log("yay3");
 
             return;
         }
@@ -571,7 +564,6 @@ public class gravity_Csharp : MonoBehaviour
             dotargsbuffer.SetData(dot_args);
 
             DotMaterial.SetBuffer("_dotData", DotBuffer);
-            Debug.Log("yay");
             next_frame_id = "";
             return;
         }
