@@ -5646,6 +5646,7 @@ GameObject:
   - component: {fileID: 1805250056}
   - component: {fileID: 1805250057}
   - component: {fileID: 1805250058}
+  - component: {fileID: 1805250059}
   m_Layer: 0
   m_Name: script
   m_TagString: Untagged
@@ -5700,6 +5701,7 @@ MonoBehaviour:
   VelocityPresent: {x: 0, y: 0}
   masstext: {fileID: 2071431540}
   Mouse_Shere: {fileID: 1309775738597109401, guid: 35f820a7c9e4c6d4ca8579f80a91031e, type: 3}
+  addDotUI: {fileID: 1805250059}
   G: 0.1
   start_empty: 1
 --- !u!4 &1805250055
@@ -5761,6 +5763,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::hideUI
   HideUI: 1
   canvas: {fileID: 2028660852}
+--- !u!114 &1805250059
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1805250052}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2704f35616310e20abe7366828db9eb4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Add_Dot_UI
+  gravityscript: {fileID: 1805250054}
+  active: 0
 --- !u!1 &1968729273
 GameObject:
   m_ObjectHideFlags: 0

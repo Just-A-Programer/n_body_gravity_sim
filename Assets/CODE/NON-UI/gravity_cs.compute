@@ -146,12 +146,15 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
         {
             float Current_Target_Mass = inputData[Current_Target_index].mass;
+            // checks if object is not deleted
+            if (Current_Target_Mass == 0) { continue; } 
+            
 
-            if (Current_Target_Mass == 0) { continue; } // checks if object is not deleted
-            
             float2 Current_Target_Poss = inputData[Current_Target_index].position;
-            
-            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y) || distance(currPoss, Current_Target_Poss) < 1) { continue; } 
+            // checks if its not the same obj and if its not too close
+            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y) || distance(currPoss, Current_Target_Poss) <= 1) { continue; } 
+
+
             
             float F = G * ((currMass * Current_Target_Mass) / pow(distance(currPoss, Current_Target_Poss), 2.0)); // (pow(currPoss.x - Current_Target_Poss.x, 2) + pow(currPoss.y - Current_Target_Poss.y, 2))); 
             float alpha = atan2((currPoss.y - Current_Target_Poss.y), (currPoss.x - Current_Target_Poss.x));
@@ -172,21 +175,16 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             summForce += calcForce[i];
         }
         
-        debugData[DispatchGroupIndex].DebugMatrix_n0.x = summForce.x;
-        debugData[DispatchGroupIndex].DebugMatrix_n0.y = summForce.y;
+        //Coneverts calculated force to bodies velocity
         
-        //Conevert calculated force to bodies velocity
-        
-        float2 velocityDelta = (summForce * fixedDeltaTime) / currMass;
+        //F=ma -> a=F/m
 
-        currVelo += velocityDelta;
-        
-        debugData[DispatchGroupIndex].DebugMatrix_n1.x = currVelo.x;
-        debugData[DispatchGroupIndex].DebugMatrix_n1.y = currVelo.y;
+        //dont get why splitting vel calculations into 2 helps, but without it it causes extra unwanted vel
+        currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
         
         currPoss -= currVelo;
-        
 
+        currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
     }
     
     
@@ -242,57 +240,56 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     if (changeDots[0].changeID == 0 && GroupIndex == 0) 
     {   
         int iteration = 0;
+        float dist = 1;
         
         for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
         {
             if (inputData[Current_Target_index].mass == 0)
             {
-                if (miscData[0].newDotAmount <= 0){
-                    miscData[0].newDotAmount = 0;
-                    break;
-                }
+                
+                float current_theta = 0.0; //in radians
+                float beta = 0.0;
+                float n = 0;
+                dist = 1;
+
 
                 iteration++;
                 InterlockedAdd(miscData[0].newDotAmount, -1);
                 InterlockedAdd(miscData[0].freeSpace, -1);
-
+                
                 inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
                 inputData[Current_Target_index].color = changeDots[0].changeDataCol;
                 inputData[Current_Target_index].velocity = changeDots[0].changeDataVel;
                 
                 
-                float l = 1;
-                float current_theta = 0.0; //in radians
-                float beta = 0.0;
-                float n = 0;
-                
-                float dist = 1;
-                
-                for (int id = 1; id < iteration+1; id++)
+                for (int id = 0; id < iteration; id++)
                 {
                     beta = 2.0 * atan(0.5/dist);
                     n = (2.0 * PI)/beta;
-
-                    //current_theta = iteration; 
+                    
                     if ((id + floor(n)) < iteration){
                         id += floor(n);
                         dist++;
-                        //current_theta = beta;
                     }
-                    else if ((id + floor(n)) >= iteration){
+                    else if(floor(changeDots[0].radius) <= dist){
+                        break;
+                    }
+                    else{
                         float alpha = (2.0*PI)/floor(n);
                         current_theta = abs(iteration-id)*alpha;
-                        //current_theta = alpha; 
-                        //current_theta = 1; 
                         break;         
                     }
-
+                    
                 }
-  
-                //current_theta = iteration; 
-                //current_theta = (iteration-id);
+
                 inputData[Current_Target_index].position = float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
+                
+                
+                if (floor(changeDots[0].radius) <= dist){
+                    break;
+                }
             }
+
         }
     }
     // remove
@@ -364,7 +361,6 @@ void CopyBuffer1(uint GroupIndex : SV_GroupIndex){
             for (uint pos = GroupIndex; pos < numStructs; pos += 64)
             {
                 inputData[pos] = inputData_TMP[pos];
-                miscData[0].dotCount += miscData[0].newDotAmount;
             }
             break;
         case 1:
