@@ -54,7 +54,6 @@ struct miscellaneousData
 {
     int dotCount;
     int freeSpace;
-    int newDotAmount;
 };
 
 struct Debug
@@ -72,6 +71,7 @@ float fixedDeltaTime;
 float G; 
 static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
+int newdotamount;
 int DEBUGMODE = 0;
 int CopyID;
 
@@ -101,15 +101,6 @@ RWStructuredBuffer<Debug> debugData;
 
 groupshared float2 calcForce[ThreadSize];
 
-
-float random(float2 p){
-
-    float2 K1 = float2(
-        23.14069263277926, // e^pi (Gelfond's constant)
-         2.665144142690225 // 2^sqrt(2) (Gelfond–Schneider constant)
-    );
-    return (cos(dot(p, K1)) * 12345.6789);
-}
 
 [numthreads(4, 4, 2)]
 void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
@@ -254,7 +245,6 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
 
 
                 iteration++;
-                InterlockedAdd(miscData[0].newDotAmount, -1);
                 InterlockedAdd(miscData[0].freeSpace, -1);
                 
                 inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
@@ -283,7 +273,19 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
                 }
 
                 inputData[Current_Target_index].position = float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
+
+                float2 newpos = inputData[Current_Target_index].position - changeDots[0].centerPos;
+
+                float2x2 Forcematrix = {
+                    cos(atan2(newpos.x, newpos.y)), -sin(atan2(newpos.x, newpos.y)),
+                    sin(atan2(newpos.x, newpos.y)),  cos(atan2(newpos.x, newpos.y))
+                };
+
+                inputData[Current_Target_index].velocity -= mul(float2(1, 1) * sqrt((G * changeDots[0].changeDataMass * newdotamount) / newpos), Forcematrix);
                 
+
+                
+
                 
                 if (floor(changeDots[0].radius) <= dist){
                     break;

@@ -37,7 +37,7 @@ public class camera : MonoBehaviour
         if (Input.GetKey(KeyCode.S)) { cam.transform.position = cam.transform.position - new Vector3(0, movement_speed + (movement_speed * issprinting * (sprint_multiplayer - 1)), 0) * Time.deltaTime * zoomMultiplier; }
 
         float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (grav_Script.mouse_MODE == -1 || Input.GetKey(KeyCode.LeftControl)) { zoom -= scroll * Mathf.Pow(zoomMultiplier, 2); }
+        if (grav_Script.mouse_MODE == -1 || Input.GetKey(KeyCode.LeftControl)) { zoom -= Mathf.Pow(scroll * zoomMultiplier * sprint_multiplayer, 2) * Mathf.Sign(scroll); }
         Camera.main.orthographicSize = Mathf.SmoothDamp(Camera.main.orthographicSize, zoom, ref velocity, smoothTime);
 
         if (Input.GetKeyDown(KeyCode.F11))

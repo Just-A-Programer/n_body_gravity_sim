@@ -5648,7 +5648,7 @@ GameObject:
   - component: {fileID: 1805250058}
   - component: {fileID: 1805250059}
   m_Layer: 0
-  m_Name: THE SCRIPTS
+  m_Name: script
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -5778,9 +5778,6 @@ MonoBehaviour:
   gravityscript: {fileID: 1805250054}
   centerprefab: {fileID: 647425592805651796, guid: aa6be073864ae4580ab8831a25373cb2, type: 3}
   lenghtprefab: {fileID: 647425592805651796, guid: aa6be073864ae4580ab8831a25373cb2, type: 3}
-  veltextprefab: {fileID: 0}
-  sensitivity: 40
-  centerballSize: 0.025
   active: 0
 --- !u!1 &1968729273
 GameObject:
@@ -6807,5 +6804,5 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1265465343}
-  - {fileID: 1394301751}
   - {fileID: 1805250055}
+  - {fileID: 1394301751}
