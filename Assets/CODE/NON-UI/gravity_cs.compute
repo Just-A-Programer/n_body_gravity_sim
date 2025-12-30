@@ -1,6 +1,6 @@
 #pragma kernel CSMain
-#pragma kernel AddorRemoveDots
 #pragma kernel UpdateLOD
+#pragma kernel AddorRemoveDots
 #pragma kernel CopyBuffer1
 #pragma kernel CopyBuffer2
 #pragma kernel CalcTrajectory
@@ -35,12 +35,12 @@ struct changeDotsStr
 
 struct LOD_str
 {
-    float2 position;
+    float2 position; // of bottom left corner
     float2 localCenterOfMass;
     float mass;
 
     /*
-    LOD Sizes:
+    LOD Sizes (6):
     0: 0.5x0.5
     1: 2x2     (x4)
     2: 4x4     (x2)
@@ -79,6 +79,7 @@ static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
 int newdotamount;
 int DEBUGMODE = 0;
+int COLLISION = 0;
 int CopyID;
 
 //for trajectory kernel
@@ -86,6 +87,17 @@ int Distance;
 float Resolution;
 float2 CenterBallPoss;
 groupshared float2 calcForceTraj[ThreadSize];
+
+
+//LOD distance for calculations
+float LOD0ActivationDistance = 0;
+float LOD1ActivationDistance = 16;
+float LOD2ActivationDistance = 32;
+float LOD3ActivationDistance = 64;
+float LOD4ActivationDistance = 128;
+float LOD5ActivationDistance = 256;
+
+static const float LevelSize[6] = {0.5, 2.0, 4.0, 8.0, 16.0, 32.0};
 
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
@@ -191,21 +203,34 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
     }
     
+    GroupMemoryBarrierWithGroupSync();
+
+    /*
+        COLLISION DETECTION
+    */
     
+    if (COLLISION == 1)
+    {
+        
+        
+        
+        
+        
+        
+    }
+    
+    
+
+    
+    GroupMemoryBarrierWithGroupSync();
     // debug output
     if (GroupIndex == 0 && DEBUGMODE == 1)
     {
-
-
         debugData[DispatchGroupIndex].DebugMatrix_n2.x = 0;
         debugData[DispatchGroupIndex].DebugMatrix_n2.y = 0;
         debugData[DispatchGroupIndex].DebugMatrix_n3.x = 0;
         debugData[DispatchGroupIndex].DebugMatrix_n3.y = 0;
     }
-
-    
-    GroupMemoryBarrierWithGroupSync();
-    
     // output
     if (GroupIndex == 0)
     {
@@ -215,6 +240,45 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         inputData[DispatchGroupIndex].mass = currMass;
     }
 }
+
+
+
+
+
+
+[numthreads(4, 4, 2)]
+void UpdateLOD(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    
+    int Level = GroupID.x;
+    uint LODCount = 0;
+    uint dotCount = uint(miscData[0].dotCount);
+    
+    int B = 0;
+    int E = 0;
+    int Start_cord = 0;
+    int End_cord = 0;
+
+    B = floor((dotCount - 1.0) / ThreadSize);
+    E = (dotCount - 1.0) % ThreadSize;
+
+    Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+    End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+    
+    for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
+    {
+        float2 DotPoss = inputData[Current_Dot_index].position;
+        float2 PossibleLODPoss = DotPoss - DotPoss % LevelSize[Level];
+        
+        for (int i = 0; i < dotCount; i++)
+        {
+            
+        }
+    }
+    
+}
+
+
 
 
 
@@ -351,12 +415,6 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     InterlockedAdd(miscData[0].freeSpace, currFreeSpace);
 }
 
-
-
-[numthreads(4, 4, 2)]
-void UpdateLOD(int GroupIndex : SV_GroupIndex){
-    
-}
 
 
 
@@ -565,6 +623,7 @@ void CalcTrajectory(int GroupIndex : SV_GroupIndex)
             currPoss -= currVelo * fixedDeltaTime * Resolution;
 
             currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime * 0.5 * Resolution;
+            
             trajPath[index].position = currPoss;
             index++;
         }

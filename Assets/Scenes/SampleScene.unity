@@ -4508,7 +4508,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1394301751
 Transform:
   m_ObjectHideFlags: 0
@@ -4518,7 +4518,7 @@ Transform:
   m_GameObject: {fileID: 1394301750}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.72687274, y: 0.30368966, z: 0.000109103894}
+  m_LocalPosition: {x: -17.41, y: 0.30368966, z: 0.000109103894}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -7492,7 +7492,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6358186127899985041, guid: aa6be073864ae4580ab8831a25373cb2, type: 3}
       propertyPath: resolution
-      value: 100
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -7704,5 +7704,5 @@ SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
   - {fileID: 1265465343}
-  - {fileID: 1394301751}
   - {fileID: 1805250055}
+  - {fileID: 1394301751}
