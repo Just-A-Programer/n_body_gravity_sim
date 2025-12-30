@@ -149,6 +149,7 @@ public class gravity_Csharp : MonoBehaviour
     int LOD_kernel;
     int CopyBuff1_kernel;
     int CopyBuff2_kernel;
+    int trajectory_kernel;
 
 
     //MOUSE MODE DATA
@@ -157,6 +158,7 @@ public class gravity_Csharp : MonoBehaviour
     public Color ColorPreset;
     public float MassPresent = 1;
     public Vector2 VelocityPresent;
+    public Vector2 PositionPresent;
 
     public TMPro.TMP_InputField masstext;
     public GameObject Mouse_Shere;
@@ -174,7 +176,9 @@ public class gravity_Csharp : MonoBehaviour
     Camera cam;
     string next_frame_id = "";
     int newDotAmount;
+    bool resizing = false;
 
+    
     #endregion
 
     private void Start()
@@ -213,6 +217,7 @@ public class gravity_Csharp : MonoBehaviour
         LOD_kernel =      computeShader.FindKernel("UpdateLOD");
         CopyBuff1_kernel = computeShader.FindKernel("CopyBuffer1");
         CopyBuff2_kernel = computeShader.FindKernel("CopyBuffer2");
+        trajectory_kernel = computeShader.FindKernel("CalcTrajectory");
 
 
         Dotinput =           new dot_str_Csharp[dotCount];
@@ -346,11 +351,14 @@ public class gravity_Csharp : MonoBehaviour
 
     private void Update()
     {
-        miscellaneousData[] miscData = new miscellaneousData[1];
-        miscellaneousBuffer.GetData(miscData);
+        if (!resizing)
+        {
+            miscellaneousData[] miscData = new miscellaneousData[1];
+            miscellaneousBuffer.GetData(miscData);
 
-        dotCount =  miscData[0].dotCount;
-        freeSpace = miscData[0].freeSpace;
+            dotCount  = miscData[0].dotCount;
+            freeSpace = miscData[0].freeSpace;
+        }
 
         DoItNextFrame(next_frame_id);
 
@@ -395,7 +403,7 @@ public class gravity_Csharp : MonoBehaviour
             ChangeInput = new changeDotsStr_Csharp[1];
             ChangeInput[0].changeID = 0;
             ChangeInput[0].radius = r;
-            ChangeInput[0].centerPos = new Vector2(point.x, point.y);
+            ChangeInput[0].centerPos = PositionPresent;//new Vector2(point.x, point.y);
 
             ChangeInput[0].changeDataCol = new Vector3(ColorPreset.r, ColorPreset.g, ColorPreset.b);
             ChangeInput[0].changeDataMass = MassPresent;
@@ -412,11 +420,13 @@ public class gravity_Csharp : MonoBehaviour
                     addDotUIClicks = 0;
                     if (newDotAmount >= freeSpace)
                     {
+                        resizing = true;
+
                         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+                        computeShader.SetBuffer(CopyBuff1_kernel, "inputData_TMP", DotBuffer_TMP);
                         computeShader.SetInt("CopyID", 1);
 
                         next_frame_id = "add Dots ID part 1";
-                        Debug.Log("add Dots ID part 0");
                     }
                     else
                     {
@@ -518,29 +528,29 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.Dispatch(CopyBuff1_kernel, 1, 1, 1);
 
             next_frame_id = "add Dots ID part 2";
-            Debug.Log("add Dots ID part 1");
             return;
         }
         else if (ID == "add Dots ID part 2")
         {
-            DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount + newDotAmount - freeSpace, sizeof(float) * (3 + 2 + 2 + 1));
+            dotCount = (int)MathF.Floor(1.25f*(dotCount + newDotAmount - freeSpace));
+            freeSpace = 0;
+            
+            DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+            
 
-            Dotinput = new dot_str_Csharp[dotCount + newDotAmount - freeSpace];
+            // IMPORTANT: bind NEW buffer as destination
+            computeShader.SetBuffer(CopyBuff1_kernel, "inputData", DotBuffer);
+            //computeShader.SetBuffer(CopyBuff1_kernel, "inputData_TMP", DotBuffer_TMP);
 
-            DotBuffer.SetData(Dotinput);
-
+            // Rebind other kernels
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(change_kernel, "inputData", DotBuffer);
-            computeShader.SetBuffer(CopyBuff1_kernel, "inputData", DotBuffer);
-
             DotMaterial.SetBuffer("_dotData", DotBuffer);
 
+            // Tell copy shader direction
             computeShader.SetInt("CopyID", 0);
 
-            dotCount = dotCount + newDotAmount - freeSpace;
-
             next_frame_id = "add Dots ID part 3";
-            Debug.Log("add Dots ID part 2");
             return;
         }
         else if (ID == "add Dots ID part 3")
@@ -549,22 +559,26 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.Dispatch(CopyBuff1_kernel, 1, 1, 1);
 
             next_frame_id = "add Dots ID part 4";
-            Debug.Log("add Dots ID part 3");
             return;
         }
         else if (ID == "add Dots ID part 4")
         {
 
             computeShader.Dispatch(change_kernel, 1, 1, 1);
-            Debug.Log("add Dots ID part 4");
+            
             next_frame_id = "add Dots ID part 5";
             
             return;
         }
         else if (ID == "add Dots ID part 5")
         {
-            //RebindGPUBuffers(new bool[5] {true, true, true, true, true});
+            miscellaneousInput[0].dotCount = dotCount;
+            miscellaneousInput[0].freeSpace = freeSpace;
+            miscellaneousBuffer.SetData(miscellaneousInput);
 
+            
+            //RebindGPUBuffers(new bool[5] {true, true, true, true, true});
+            dotargsbuffer.Release();
             dot_args[0] = (uint)DotMesh.GetIndexCount(0);
             dot_args[1] = (uint)dotCount;
             dot_args[2] = (uint)DotMesh.GetIndexStart(0);
@@ -576,8 +590,10 @@ public class gravity_Csharp : MonoBehaviour
 
             
 
-            Debug.Log("add Dots ID part 5");
+            Debug.Log(DotBuffer.count);
             next_frame_id = "";
+            resizing = false;
+
             return;
         }
     }
@@ -591,6 +607,9 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(dot_kernel, "miscData",  miscellaneousBuffer);
             computeShader.SetBuffer(dot_kernel, "debugData", DebugBuffer);
+            computeShader.SetBuffer(trajectory_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(trajectory_kernel, "changeDots",  ChangeBuffer);
+            computeShader.SetBuffer(trajectory_kernel, "miscData",  miscellaneousBuffer);
         }
 
         if (exc[1])

@@ -5700,11 +5700,10 @@ MonoBehaviour:
   ColorPreset: {r: 1, g: 1, b: 1, a: 1}
   MassPresent: 1
   VelocityPresent: {x: 0, y: 0}
-  PositionPresent: {x: 0, y: 0}
   masstext: {fileID: 2071431540}
   Mouse_Shere: {fileID: 1309775738597109401, guid: 35f820a7c9e4c6d4ca8579f80a91031e, type: 3}
   addDotUI: {fileID: 1805250059}
-  G: 1
+  G: 0.1
   start_empty: 1
 --- !u!4 &1805250055
 Transform:
@@ -7488,11 +7487,11 @@ PrefabInstance:
       objectReference: {fileID: 1805250054}
     - target: {fileID: 6358186127899985041, guid: aa6be073864ae4580ab8831a25373cb2, type: 3}
       propertyPath: distance
-      value: 150
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 6358186127899985041, guid: aa6be073864ae4580ab8831a25373cb2, type: 3}
       propertyPath: resolution
-      value: 100
+      value: 10
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

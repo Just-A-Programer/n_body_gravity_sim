@@ -78,7 +78,7 @@ Shader "Custom/InstancingShader"
                 else if (_RENDER_MODE == 1){ // speed
 
                     float currAbsVelo = sqrt(pow(_dotData[instanceID].velocity.x, 2) + pow(_dotData[instanceID].velocity.y, 2));
-                    o.color = float4(clamp(currAbsVelo / 1, 0, 1), (1 - clamp(currAbsVelo / 1, 0, 1)), 0, 1);
+                    o.color = float4(clamp(currAbsVelo / 10, 0, 1), (1 - clamp(currAbsVelo / 10, 0, 1)), 0, 1);
 
                 }
                 else if (_RENDER_MODE == 2){ // mass

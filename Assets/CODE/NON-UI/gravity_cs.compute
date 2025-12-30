@@ -3,6 +3,7 @@
 #pragma kernel UpdateLOD
 #pragma kernel CopyBuffer1
 #pragma kernel CopyBuffer2
+#pragma kernel CalcTrajectory
 
 struct dotData
 {
@@ -56,6 +57,11 @@ struct miscellaneousData
     int freeSpace;
 };
 
+struct trajectoryPath
+{
+    float2 position;
+};
+
 struct Debug
 {
     float2 DebugMatrix_n0;
@@ -74,6 +80,12 @@ static const int ThreadSize = 32;
 int newdotamount;
 int DEBUGMODE = 0;
 int CopyID;
+
+//for trajectory kernel
+int Distance;
+float Resolution;
+float2 CenterBallPoss;
+groupshared float2 calcForceTraj[ThreadSize];
 
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
@@ -96,6 +108,7 @@ RWStructuredBuffer<LOD_str> LOD5_TMP;      // Copy ID: 13  -in copy2
 
 RWStructuredBuffer<changeDotsStr> changeDots;
 RWStructuredBuffer<miscellaneousData> miscData;
+RWStructuredBuffer<trajectoryPath> trajPath;
 RWStructuredBuffer<Debug> debugData;
 
 
@@ -173,7 +186,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         //dont get why splitting vel calculations into 2 helps, but without it it causes extra unwanted vel
         currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
         
-        currPoss -= currVelo;
+        currPoss -= currVelo * fixedDeltaTime;
 
         currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
     }
@@ -281,7 +294,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
                     sin(atan2(newpos.x, newpos.y)),  cos(atan2(newpos.x, newpos.y))
                 };
 
-                inputData[Current_Target_index].velocity -= mul(float2(1, 1) * sqrt((G * changeDots[0].changeDataMass * newdotamount) / newpos), Forcematrix);
+                //inputData[Current_Target_index].velocity -= mul(float2(1, 1) * (G*G / dist), Forcematrix);// mul(float2(1, 1) * sqrt((G * changeDots[0].changeDataMass * newdotamount) / newpos), Forcematrix);
                 
 
                 
@@ -487,4 +500,74 @@ void CopyBuffer2(uint GroupIndex : SV_GroupIndex){
             }
             break;        
     }
+}
+
+[numthreads(4, 4, 2)]
+void CalcTrajectory(int GroupIndex : SV_GroupIndex)
+{
+    
+    float2 currPoss = CenterBallPoss;
+    float2 currVelo = changeDots[0].changeDataVel;
+    uint dotCount = uint(miscData[0].dotCount);
+    
+    if (GroupIndex == 0) {trajPath[0].position = currPoss;}
+    
+    int B = floor((dotCount - 1.0) / ThreadSize);
+    int E = (dotCount - 1.0) % ThreadSize;
+    int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+    int End_cord = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+    
+    int index = 0;
+    
+    // calculates trajectories path
+    for (int i = 1; i < Distance; i++)
+    {
+        calcForceTraj[GroupIndex] = 0;
+    
+        
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            float Current_Target_Mass = inputData[Current_Target_index].mass;
+            // checks if object is not deleted
+            if (Current_Target_Mass == 0) { continue; } 
+            
+            float2 Current_Target_Poss = inputData[Current_Target_index].position;
+            
+            // checks if its not too close
+            if (distance(currPoss, Current_Target_Poss) <= 1) { continue; } 
+
+            
+            float F = G * ((Current_Target_Mass * changeDots[0].changeDataMass) / pow(distance(currPoss, Current_Target_Poss), 2.0)); // (pow(currPoss.x - Current_Target_Poss.x, 2) + pow(currPoss.y - Current_Target_Poss.y, 2))); 
+            float alpha = atan2((currPoss.y - Current_Target_Poss.y), (currPoss.x - Current_Target_Poss.x));
+            
+            calcForceTraj[GroupIndex] += float2(cos(alpha) * F, sin(alpha) * F);
+        }
+    
+        GroupMemoryBarrierWithGroupSync();
+
+        // main thread (which is 0) sums all of the other threads results into one singular result
+        if (GroupIndex == 0)
+        {
+        
+            float2 summForce = float2(0,0);
+            for (int i = 0; i < ThreadSize; i++)
+            {
+                summForce += calcForceTraj[i];
+            }
+        
+            //Coneverts calculated force to bodies velocity
+        
+            //F=ma -> a=F/m
+
+            //dont get why splitting vel calculations into 2 helps, but without it it causes extra unwanted vel
+            currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime * 0.5 * Resolution; //(1/Resolution)
+        
+            currPoss -= currVelo * fixedDeltaTime * Resolution;
+
+            currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime * 0.5 * Resolution;
+            trajPath[index].position = currPoss;
+            index++;
+        }
+    }
+    trajPath[index].position = currPoss;
 }

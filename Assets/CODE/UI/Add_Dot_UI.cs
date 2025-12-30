@@ -4,10 +4,9 @@ using System.Collections;
 public class Add_Dot_UI : MonoBehaviour
 {
     public gravity_Csharp gravityscript;
-    public GameObject centerprefab;
+    public GameObject centerballObj;
     public GameObject lenghtprefab;
-    public GameObject veltextprefab;
-    GameObject centerobj;
+    //public GameObject veltextprefab;
     GameObject[] lenghtobj;
     GameObject[] veltextobj;
 
@@ -33,10 +32,12 @@ public class Add_Dot_UI : MonoBehaviour
 
         center = cam.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, cam.nearClipPlane));
 
-        centerobj = Instantiate(centerprefab);
-        centerobj.transform.position = new Vector3(center.x, center.y, 0);
-        centerobj.transform.localScale = new Vector3(cam.orthographicSize*centerballSize, cam.orthographicSize*centerballSize, 0);
-
+        centerballObj.SetActive(true);
+        centerballObj.transform.position = new Vector3(center.x, center.y, 0);
+        centerballObj.transform.localScale = new Vector3(cam.orthographicSize*centerballSize, cam.orthographicSize*centerballSize, 0);
+        
+        gravityscript.PositionPresent = center;
+        
         /*lenghtobj[0] = Instantiate(lenghtprefab);
         lenghtobj[0].transform.position = new Vector3(center.x, center.y, 0);
         lenghtobj[0].transform.localScale = new Vector3(cam.orthographicSize*centerballSize, cam.orthographicSize*centerballSize, 0);*/
@@ -52,7 +53,7 @@ public class Add_Dot_UI : MonoBehaviour
     }
     public void finishingpass()
     {
-        GameObject.Destroy(centerobj);
+        centerballObj.SetActive(false);
         clickcounter = 0;
         active = false;
     }
