@@ -4508,7 +4508,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1394301751
 Transform:
   m_ObjectHideFlags: 0
@@ -5682,7 +5682,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   DEBUG_MODE: 0
   RENDER_DOTS: 1
-  RENDER_LODs: 0
+  RENDER_Grids: 0
   COMPUTE_SHADER: 1
   RENDER_MODE: 0
   DebugMatrixShow: 00000000
@@ -5694,8 +5694,8 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: 72615ecf4603ef64685b985145256082, type: 3}
   DotMesh: {fileID: -2124705421725058983, guid: 72a3a29d0eadfae43be00b3c0e7cea13, type: 3}
   DotMaterial: {fileID: 2100000, guid: 5dd179d5ce5a2bd44be5e94e7f28bfaf, type: 2}
-  LODMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  LODMaterial: {fileID: 2100000, guid: 509347520f3ea8149bcded25e5a66674, type: 2}
+  GridMesh: {fileID: 0}
+  GridMaterial: {fileID: 0}
   mouse_MODE: -1
   ColorPreset: {r: 1, g: 1, b: 1, a: 1}
   MassPresent: 1
@@ -5973,7 +5973,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &1995724219
 SpriteRenderer:
   m_ObjectHideFlags: 0

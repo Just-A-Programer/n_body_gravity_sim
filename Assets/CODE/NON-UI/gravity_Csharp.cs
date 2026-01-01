@@ -25,14 +25,14 @@ struct changeDotsStr_Csharp
     public Vector3 changeDataCol;
 }
 
-struct LOD_str_Csharp
+struct Grid_str_Csharp
 {
     public Vector2 position;
     public Vector2 localCenterOfMass;
     public float mass;
 
     /*
-    LOD Sizes:
+    Grid Sizes:
     0: 0.5x0.5
     1: 2x2     (x4)
     2: 4x4     (x2)
@@ -70,7 +70,7 @@ public class gravity_Csharp : MonoBehaviour
     [Header("MODES")]
     public bool DEBUG_MODE;
     public bool RENDER_DOTS;
-    public bool RENDER_LODs;
+    public bool RENDER_Grids;
     public bool COMPUTE_SHADER;
     public int  RENDER_MODE;
     public bool[] DebugMatrixShow = new bool[4];
@@ -99,24 +99,24 @@ public class gravity_Csharp : MonoBehaviour
     public Mesh DotMesh;
     public Material DotMaterial;
 
-    public Mesh LODMesh;
-    public Material LODMaterial;
+    public Mesh GridMesh;
+    public Material GridMaterial;
 
     GraphicsBuffer dotargsbuffer;
     uint[] dot_args = new uint[4];
 
-    GraphicsBuffer LODargsbuffer;
-    uint[] LOD_args = new uint[4];
+    GraphicsBuffer Gridargsbuffer;
+    uint[] Grid_args = new uint[4];
 
 
 
     //COMPUTE BUFFERS
-    GraphicsBuffer LODBuffer0;
-    GraphicsBuffer LODBuffer1;
-    GraphicsBuffer LODBuffer2;
-    GraphicsBuffer LODBuffer3;
-    GraphicsBuffer LODBuffer4;
-    GraphicsBuffer LODBuffer5;
+    GraphicsBuffer GridBuffer0;
+    GraphicsBuffer GridBuffer1;
+    GraphicsBuffer GridBuffer2;
+    GraphicsBuffer GridBuffer3;
+    GraphicsBuffer GridBuffer4;
+    GraphicsBuffer GridBuffer5;
 
 
     GraphicsBuffer DotBuffer;
@@ -141,7 +141,8 @@ public class gravity_Csharp : MonoBehaviour
     //KERNEL IDs
     int dot_kernel;
     int change_kernel;
-    int LOD_kernel;
+    int InitGrid_kernel;
+    int Grid_kernel;
     int CopyBuff_kernel;
     int trajectory_kernel;
 
@@ -180,28 +181,29 @@ public class gravity_Csharp : MonoBehaviour
         cam = Camera.main;
 
         #region SETTING UP CS BUFFERS
-
-
+        
         DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
         ChangeBuffer =        new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(float) * (3 + 2 + 2 + 1 + 1) + sizeof(uint) * 1);
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 2);
         DebugBuffer =         new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * 4 * 2);
-
-        LODBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
+        
+        // (1/gridsize)*(totalgridsize)^2
+        GridBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 2097152, sizeof(float) * (2 + 2 + 1));
+        GridBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1048576, sizeof(float) * (2 + 2 + 1));
+        GridBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 524288 , sizeof(float) * (2 + 2 + 1));
+        GridBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 262144 , sizeof(float) * (2 + 2 + 1));
+        GridBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 131072 , sizeof(float) * (2 + 2 + 1));
+        GridBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 65536  , sizeof(float) * (2 + 2 + 1));
 
 
         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
         
 
-        dot_kernel =      computeShader.FindKernel("CSMain");
-        change_kernel =   computeShader.FindKernel("AddorRemoveDots");
-        LOD_kernel =      computeShader.FindKernel("UpdateLOD");
-        CopyBuff_kernel = computeShader.FindKernel("CopyBuffer");
+        dot_kernel        = computeShader.FindKernel("CSMain");
+        change_kernel     = computeShader.FindKernel("AddorRemoveDots");
+        InitGrid_kernel   = computeShader.FindKernel("InitializeGrid");
+        Grid_kernel       = computeShader.FindKernel("UpdateGrid");
+        CopyBuff_kernel   = computeShader.FindKernel("CopyBuffer");
         trajectory_kernel = computeShader.FindKernel("CalcTrajectory");
 
 
@@ -307,9 +309,9 @@ public class gravity_Csharp : MonoBehaviour
         DotMaterial.SetBuffer("_dotData", DotBuffer);
 
 
-        // LOD renderer
+        // Grid renderer
 
-        /*LODMaterial.SetBuffer("_dotData", DotBuffer);
+        /*GridMaterial.SetBuffer("_dotData", DotBuffer);
         rp = new RenderParams(DotMaterial)
         {
             receiveShadows = false,
@@ -360,7 +362,7 @@ public class gravity_Csharp : MonoBehaviour
         {
             Graphics.DrawMeshInstancedIndirect(DotMesh, 0, DotMaterial, new Bounds(cam.transform.position, new Vector3(1,1,1)), dotargsbuffer);
         }
-        if (RENDER_LODs)
+        if (RENDER_Grids)
         {
 
         }
@@ -504,11 +506,7 @@ public class gravity_Csharp : MonoBehaviour
         #endregion
 
     }
-
-
-    void UpdateLOD(){
-
-    }
+    
 
     void DoItNextFrame(string ID)
     {
@@ -580,10 +578,8 @@ public class gravity_Csharp : MonoBehaviour
             dotargsbuffer.SetData(dot_args);
 
             DotMaterial.SetBuffer("_dotData", DotBuffer);
-
             
-
-            Debug.Log(DotBuffer.count);
+            
             next_frame_id = "";
             resizing = false;
 
@@ -716,15 +712,13 @@ public class gravity_Csharp : MonoBehaviour
         DebugBuffer.Release();
         dotargsbuffer.Release();
 
-        LODBuffer0.Release();
-        LODBuffer1.Release();
-        LODBuffer2.Release();
-        LODBuffer3.Release();
-        LODBuffer4.Release();
-        LODBuffer5.Release();
-
+        GridBuffer0.Release();
+        GridBuffer1.Release();
+        GridBuffer2.Release();
+        GridBuffer3.Release();
+        GridBuffer4.Release();
+        GridBuffer5.Release();
         
         DotBuffer_TMP.Release();
-
     }
 }
