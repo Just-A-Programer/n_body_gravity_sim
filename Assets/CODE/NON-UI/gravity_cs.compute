@@ -1,8 +1,7 @@
 #pragma kernel CSMain
 #pragma kernel UpdateLOD
 #pragma kernel AddorRemoveDots
-#pragma kernel CopyBuffer1
-#pragma kernel CopyBuffer2
+#pragma kernel CopyBuffer
 #pragma kernel CalcTrajectory
 
 struct dotData
@@ -432,7 +431,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
 
 //from inputdata, LOD0 to LOD2_TMP
 [numthreads(64, 1, 1)]
-void CopyBuffer1(uint GroupIndex : SV_GroupIndex){
+void CopyBuffer(uint GroupIndex : SV_GroupIndex){
 
     uint numStructs = 0;
     uint stride = 0;
@@ -458,16 +457,6 @@ void CopyBuffer1(uint GroupIndex : SV_GroupIndex){
     }
 }
 
-
-
-
-[numthreads(64, 1, 1)]
-void CopyBuffer2(uint GroupIndex : SV_GroupIndex){
-
-    uint numStructs = 0;
-    uint stride = 0;
-    
-}
 
 [numthreads(4, 4, 2)]
 void CalcTrajectory(int GroupIndex : SV_GroupIndex)

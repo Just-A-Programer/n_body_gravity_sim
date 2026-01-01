@@ -142,8 +142,7 @@ public class gravity_Csharp : MonoBehaviour
     int dot_kernel;
     int change_kernel;
     int LOD_kernel;
-    int CopyBuff1_kernel;
-    int CopyBuff2_kernel;
+    int CopyBuff_kernel;
     int trajectory_kernel;
 
 
@@ -202,8 +201,7 @@ public class gravity_Csharp : MonoBehaviour
         dot_kernel =      computeShader.FindKernel("CSMain");
         change_kernel =   computeShader.FindKernel("AddorRemoveDots");
         LOD_kernel =      computeShader.FindKernel("UpdateLOD");
-        CopyBuff1_kernel = computeShader.FindKernel("CopyBuffer1");
-        CopyBuff2_kernel = computeShader.FindKernel("CopyBuffer2");
+        CopyBuff_kernel = computeShader.FindKernel("CopyBuffer");
         trajectory_kernel = computeShader.FindKernel("CalcTrajectory");
 
 
@@ -418,7 +416,7 @@ public class gravity_Csharp : MonoBehaviour
                         resizing = true;
 
                         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
-                        computeShader.SetBuffer(CopyBuff1_kernel, "inputData_TMP", DotBuffer_TMP);
+                        computeShader.SetBuffer(CopyBuff_kernel, "inputData_TMP", DotBuffer_TMP);
                         computeShader.SetInt("CopyID", 1);
 
                         next_frame_id = "add Dots ID part 1";
@@ -520,7 +518,7 @@ public class gravity_Csharp : MonoBehaviour
         }
         else if (ID == "add Dots ID part 1")
         {
-            computeShader.Dispatch(CopyBuff1_kernel, 1, 1, 1);
+            computeShader.Dispatch(CopyBuff_kernel, 1, 1, 1);
 
             next_frame_id = "add Dots ID part 2";
             return;
@@ -534,7 +532,7 @@ public class gravity_Csharp : MonoBehaviour
             
 
             // IMPORTANT: bind NEW buffer as destination
-            computeShader.SetBuffer(CopyBuff1_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(CopyBuff_kernel, "inputData", DotBuffer);
             //computeShader.SetBuffer(CopyBuff1_kernel, "inputData_TMP", DotBuffer_TMP);
 
             // Rebind other kernels
@@ -551,7 +549,7 @@ public class gravity_Csharp : MonoBehaviour
         else if (ID == "add Dots ID part 3")
         {
 
-            computeShader.Dispatch(CopyBuff1_kernel, 1, 1, 1);
+            computeShader.Dispatch(CopyBuff_kernel, 1, 1, 1);
 
             next_frame_id = "add Dots ID part 4";
             return;
@@ -616,12 +614,12 @@ public class gravity_Csharp : MonoBehaviour
 
         if (exc[2])
         {
-            computeShader.SetBuffer(CopyBuff1_kernel, "inputData", DotBuffer);
-            computeShader.SetBuffer(CopyBuff1_kernel, "inputData_TMP", DotBuffer_TMP);
+            computeShader.SetBuffer(CopyBuff_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(CopyBuff_kernel, "inputData_TMP", DotBuffer_TMP);
 
-            computeShader.SetBuffer(CopyBuff1_kernel, "LOD0", LODBuffer0);
-            computeShader.SetBuffer(CopyBuff1_kernel, "LOD1", LODBuffer1);
-            computeShader.SetBuffer(CopyBuff1_kernel, "LOD2", LODBuffer2);
+            computeShader.SetBuffer(CopyBuff_kernel, "LOD0", LODBuffer0);
+            computeShader.SetBuffer(CopyBuff_kernel, "LOD1", LODBuffer1);
+            computeShader.SetBuffer(CopyBuff_kernel, "LOD2", LODBuffer2);
             computeShader.SetBuffer(CopyBuff2_kernel, "LOD3", LODBuffer3);
             computeShader.SetBuffer(CopyBuff2_kernel, "LOD4", LODBuffer4);
             computeShader.SetBuffer(CopyBuff2_kernel, "LOD5", LODBuffer5);
