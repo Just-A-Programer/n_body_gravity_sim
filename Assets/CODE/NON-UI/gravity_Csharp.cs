@@ -616,13 +616,6 @@ public class gravity_Csharp : MonoBehaviour
         {
             computeShader.SetBuffer(CopyBuff_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(CopyBuff_kernel, "inputData_TMP", DotBuffer_TMP);
-
-            computeShader.SetBuffer(CopyBuff_kernel, "LOD0", LODBuffer0);
-            computeShader.SetBuffer(CopyBuff_kernel, "LOD1", LODBuffer1);
-            computeShader.SetBuffer(CopyBuff_kernel, "LOD2", LODBuffer2);
-            computeShader.SetBuffer(CopyBuff2_kernel, "LOD3", LODBuffer3);
-            computeShader.SetBuffer(CopyBuff2_kernel, "LOD4", LODBuffer4);
-            computeShader.SetBuffer(CopyBuff2_kernel, "LOD5", LODBuffer5);
         }
 
         //RENDER BUFFERS
