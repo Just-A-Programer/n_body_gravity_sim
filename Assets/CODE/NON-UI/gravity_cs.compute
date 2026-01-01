@@ -35,18 +35,18 @@ struct changeDotsStr
 
 struct LOD_str
 {
-    float2 position; // of bottom left corner
+    int2 position; // strating from the bottom left corner of the grid
     float2 localCenterOfMass;
     float mass;
 
     /*
     LOD Sizes (6):
     0: 0.5x0.5
-    1: 2x2     (x4)
-    2: 4x4     (x2)
-    3: 8x8     (x2)
-    4: 16x16   (x2)
-    5: 32x32   (x2)
+    1: 1x1     (x2)
+    2: 2x2     (x2)
+    3: 4x4     (x2)
+    4: 8x8     (x2)
+    5: 16x16   (x2)
     */
 
 };
@@ -71,18 +71,27 @@ struct Debug
 };
 
 
-float fixedDeltaTime;
 
-
+// constants or var for physics
 float G; 
+float fixedDeltaTime;
 static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
-int newdotamount;
+
+//MODES
 int DEBUGMODE = 0;
 int COLLISION = 0;
+
+//CSMAIN
+int DispatchOffset;
+
+//AddorRemoveDot
+int newdotamount;
+
+//COPYKERNEL
 int CopyID;
 
-//for trajectory kernel
+//trajectory kernel
 int Distance;
 float Resolution;
 float2 CenterBallPoss;
@@ -91,31 +100,26 @@ groupshared float2 calcForceTraj[ThreadSize];
 
 //LOD distance for calculations
 float LOD0ActivationDistance = 0;
-float LOD1ActivationDistance = 16;
-float LOD2ActivationDistance = 32;
-float LOD3ActivationDistance = 64;
-float LOD4ActivationDistance = 128;
-float LOD5ActivationDistance = 256;
+float LOD1ActivationDistance = 8;
+float LOD2ActivationDistance = 16;
+float LOD3ActivationDistance = 32;
+float LOD4ActivationDistance = 64;
+float LOD5ActivationDistance = 128;
 
-static const float LevelSize[6] = {0.5, 2.0, 4.0, 8.0, 16.0, 32.0};
+
+static const float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
+static const float LevelSize[6] = {0.5, 1.0, 2.0, 4.0, 8.0, 16.0};
 
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
 RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 1   -in copy1
 
-RWStructuredBuffer<LOD_str> LOD0;          // Copy ID: 2   -in copy1
-RWStructuredBuffer<LOD_str> LOD0_TMP;      // Copy ID: 3   -in copy1
-RWStructuredBuffer<LOD_str> LOD1;          // Copy ID: 4   -in copy1
-RWStructuredBuffer<LOD_str> LOD1_TMP;      // Copy ID: 5   -in copy1
-RWStructuredBuffer<LOD_str> LOD2;          // Copy ID: 6   -in copy1
-RWStructuredBuffer<LOD_str> LOD2_TMP;      // Copy ID: 7   -in copy1
-RWStructuredBuffer<LOD_str> LOD3;          // Copy ID: 8   -in copy2
-RWStructuredBuffer<LOD_str> LOD3_TMP;      // Copy ID: 9   -in copy2
-RWStructuredBuffer<LOD_str> LOD4;          // Copy ID: 10  -in copy2
-RWStructuredBuffer<LOD_str> LOD4_TMP;      // Copy ID: 11  -in copy2
-RWStructuredBuffer<LOD_str> LOD5;          // Copy ID: 12  -in copy2
-RWStructuredBuffer<LOD_str> LOD5_TMP;      // Copy ID: 13  -in copy2
-
+RWStructuredBuffer<LOD_str> LOD0; // 0.5
+RWStructuredBuffer<LOD_str> LOD1; // 1
+RWStructuredBuffer<LOD_str> LOD2; // 2
+RWStructuredBuffer<LOD_str> LOD3; // 4
+RWStructuredBuffer<LOD_str> LOD4; // 8
+RWStructuredBuffer<LOD_str> LOD5; // 16
 
 
 RWStructuredBuffer<changeDotsStr> changeDots;
@@ -130,7 +134,7 @@ groupshared float2 calcForce[ThreadSize];
 [numthreads(4, 4, 2)]
 void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
-    uint DispatchGroupIndex = GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize; //index of the current group
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset; //index of the current group
     
     int currMass = inputData[DispatchGroupIndex].mass;
     float2 currPoss = inputData[DispatchGroupIndex].position;
@@ -147,7 +151,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     int Start_cord = 0;
     int End_cord = 0;
 
-
+    int limit = 20000;
     // calculate everybodies forces
     if (DispatchGroupIndex <= dotCount && currMass != 0)
     {
@@ -254,27 +258,35 @@ void UpdateLOD(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     uint LODCount = 0;
     uint dotCount = uint(miscData[0].dotCount);
     
-    int B = 0;
-    int E = 0;
-    int Start_cord = 0;
-    int End_cord = 0;
-
-    B = floor((dotCount - 1.0) / ThreadSize);
-    E = (dotCount - 1.0) % ThreadSize;
-
-    Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
-    End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
     
-    for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
-    {
-        float2 DotPoss = inputData[Current_Dot_index].position;
-        float2 PossibleLODPoss = DotPoss - DotPoss % LevelSize[Level];
+    //Add new LOD's
+    int B = floor((dotCount - 1.0) / ThreadSize);;
+    int E = (dotCount - 1.0) % ThreadSize;
+    int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+    int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
         
-        for (int i = 0; i < dotCount; i++)
+    if (Level == 0)
+    {
+        for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
         {
+            float2 DotPoss = inputData[Current_Dot_index].position;
+            float2 PossibleLODPoss = DotPoss - DotPoss % LevelSize[Level];
+            
+            bool isitaLonelyDot = true;
+            //a possible Dot (Lonely Dot) without LOD. Now it needs to be found if there is an LOD0 that has the Dot
+            for (int i = 0; i < dotCount; i++) { if (LOD0[i].position.x == PossibleLODPoss.x && LOD0[i].position.y == PossibleLODPoss.y) { isitaLonelyDot = false; break;} }
+            
+            //it has
+            if (!isitaLonelyDot) {continue;}
+            
+            //it hasnt
+            //a new LOD0 is added with any other larger LOD(1-5)s if they are missing as well
             
         }
     }
+    
+    //Updates LOD's mass and the center of it
+    
     
 }
 
@@ -443,58 +455,6 @@ void CopyBuffer1(uint GroupIndex : SV_GroupIndex){
                 inputData_TMP[pos1] = inputData[pos1];
             }
             break;
-
-
-
-        case 2:
-            LOD0.GetDimensions(numStructs, stride);
-            for (uint pos2 = GroupIndex; pos2 < numStructs; pos2 += 64)
-            {
-                LOD0[pos2] = LOD0_TMP[pos2];
-            }
-            break;
-        case 3:
-            LOD0_TMP.GetDimensions(numStructs, stride);
-            for (uint pos3 = GroupIndex; pos3 < numStructs; pos3 += 64)
-            {
-                LOD0_TMP[pos3] = LOD0[pos3];
-            }
-            break;
-
-
-
-        case 4:
-            LOD1.GetDimensions(numStructs, stride);
-            for (uint pos4 = GroupIndex; pos4 < numStructs; pos4 += 64)
-            {
-                LOD1[pos4] = LOD1_TMP[pos4];
-            }
-            break;
-        case 5:
-            LOD1_TMP.GetDimensions(numStructs, stride);
-            for (uint pos5 = GroupIndex; pos5 < numStructs; pos5 += 64)
-            {
-                LOD1_TMP[pos5] = LOD1[pos5];
-            }
-            break;
-
-
-
-        case 6:
-            LOD2.GetDimensions(numStructs, stride);
-            for (uint pos6 = GroupIndex; pos6 < numStructs; pos6 += 64)
-            {
-                LOD2[pos6] = LOD2_TMP[pos6];
-            }
-            break;
-        case 7:
-            LOD2_TMP.GetDimensions(numStructs, stride);
-            for (uint pos7 = GroupIndex; pos7 < numStructs; pos7 += 64)
-            {
-                LOD2_TMP[pos7] = LOD2[pos7];
-            }
-            break;
-
     }
 }
 
@@ -506,58 +466,7 @@ void CopyBuffer2(uint GroupIndex : SV_GroupIndex){
 
     uint numStructs = 0;
     uint stride = 0;
-
-    switch (CopyID)
-    {
-        case 8:
-            LOD3.GetDimensions(numStructs, stride);
-            for (uint pos = GroupIndex; pos < numStructs; pos += 64)
-            {
-                LOD3[pos] = LOD3_TMP[pos];
-            }
-            break;
-        case 9:
-            LOD3_TMP.GetDimensions(numStructs, stride);
-            for (uint pos1 = GroupIndex; pos1 < numStructs; pos1 += 64)
-            {
-                LOD3_TMP[pos1] = LOD3[pos1];
-            }
-            break;
-
-
-
-        case 10:
-            LOD4.GetDimensions(numStructs, stride);
-            for (uint pos2 = GroupIndex; pos2 < numStructs; pos2 += 64)
-            {
-                LOD4[pos2] = LOD4_TMP[pos2];
-            }
-            break;
-        case 11:
-            LOD4_TMP.GetDimensions(numStructs, stride);
-            for (uint pos3 = GroupIndex; pos3 < numStructs; pos3 += 64)
-            {
-                LOD4_TMP[pos3] = LOD4[pos3];
-            }
-            break;
-
-
-
-        case 12:
-            LOD5.GetDimensions(numStructs, stride);
-            for (uint pos4 = GroupIndex; pos4 < numStructs; pos4 += 64)
-            {
-                LOD5[pos4] = LOD5_TMP[pos4];
-            }
-            break;
-        case 13:
-            LOD5_TMP.GetDimensions(numStructs, stride);
-            for (uint pos5 = GroupIndex; pos5 < numStructs; pos5 += 64)
-            {
-                LOD5_TMP[pos5] = LOD5[pos5];
-            }
-            break;        
-    }
+    
 }
 
 [numthreads(4, 4, 2)]

@@ -125,12 +125,7 @@ public class gravity_Csharp : MonoBehaviour
     GraphicsBuffer DebugBuffer;
 
     GraphicsBuffer DotBuffer_TMP;
-    GraphicsBuffer LODBuffer0_TMP;
-    GraphicsBuffer LODBuffer1_TMP;
-    GraphicsBuffer LODBuffer2_TMP;
-    GraphicsBuffer LODBuffer3_TMP;
-    GraphicsBuffer LODBuffer4_TMP;
-    GraphicsBuffer LODBuffer5_TMP;
+
 
 
     //STRUTs
@@ -202,14 +197,6 @@ public class gravity_Csharp : MonoBehaviour
 
 
         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
-
-        LODBuffer0_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer1_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer2_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer3_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer4_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-        LODBuffer5_TMP =    new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1, sizeof(float) * (2 + 2 + 1));
-
         
 
         dot_kernel =      computeShader.FindKernel("CSMain");
@@ -345,7 +332,16 @@ public class gravity_Csharp : MonoBehaviour
     {          
         computeShader.SetFloat("fixedDeltaTime", Time.fixedDeltaTime);
 
-        if (COMPUTE_SHADER) { computeShader.Dispatch(dot_kernel, dotCount, 1, 1); }
+        if (COMPUTE_SHADER)
+        {
+            int batchSize = 65535;
+            for (int i = 0; i < (float)dotCount/(float)batchSize; i++)
+            {
+                computeShader.SetInt("DispatchOffset", i*batchSize);
+                computeShader.Dispatch(dot_kernel, (int)MathF.Min(dotCount-i*batchSize, batchSize), 1, 1);
+                Debug.Log((int)MathF.Min(dotCount-i*batchSize, batchSize));
+            }
+        }
 
     }
 
@@ -630,13 +626,6 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.SetBuffer(CopyBuff2_kernel, "LOD3", LODBuffer3);
             computeShader.SetBuffer(CopyBuff2_kernel, "LOD4", LODBuffer4);
             computeShader.SetBuffer(CopyBuff2_kernel, "LOD5", LODBuffer5);
-
-            computeShader.SetBuffer(CopyBuff1_kernel, "LOD0_TMP", LODBuffer0_TMP);
-            computeShader.SetBuffer(CopyBuff1_kernel, "LOD1_TMP", LODBuffer1_TMP);
-            computeShader.SetBuffer(CopyBuff1_kernel, "LOD2_TMP", LODBuffer2_TMP);
-            computeShader.SetBuffer(CopyBuff2_kernel, "LOD3_TMP", LODBuffer3_TMP);
-            computeShader.SetBuffer(CopyBuff2_kernel, "LOD4_TMP", LODBuffer4_TMP);
-            computeShader.SetBuffer(CopyBuff2_kernel, "LOD5_TMP", LODBuffer5_TMP);
         }
 
         //RENDER BUFFERS
@@ -746,13 +735,6 @@ public class gravity_Csharp : MonoBehaviour
 
         
         DotBuffer_TMP.Release();
-
-        LODBuffer0_TMP.Release();
-        LODBuffer1_TMP.Release();
-        LODBuffer2_TMP.Release();
-        LODBuffer3_TMP.Release();
-        LODBuffer4_TMP.Release();
-        LODBuffer5_TMP.Release();
 
     }
 }
