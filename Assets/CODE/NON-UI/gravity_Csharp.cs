@@ -339,7 +339,6 @@ public class gravity_Csharp : MonoBehaviour
             {
                 computeShader.SetInt("DispatchOffset", i*batchSize);
                 computeShader.Dispatch(dot_kernel, (int)MathF.Min(dotCount-i*batchSize, batchSize), 1, 1);
-                Debug.Log((int)MathF.Min(dotCount-i*batchSize, batchSize));
             }
         }
 
