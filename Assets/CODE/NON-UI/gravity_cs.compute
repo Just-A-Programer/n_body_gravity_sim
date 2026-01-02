@@ -72,7 +72,7 @@ struct Debug
 
 
 
-// constants or var for physics
+// constants or variables for physics
 float G; 
 float fixedDeltaTime;
 static const float PI = 3.14159265358979323846;
@@ -99,16 +99,9 @@ groupshared float2 calcForceTraj[ThreadSize];
 
 
 //Grid distance for calculations
-float Grid0ActivationDistance = 0;
-float Grid1ActivationDistance = 8;
-float Grid2ActivationDistance = 16;
-float Grid3ActivationDistance = 32;
-float Grid4ActivationDistance = 64;
-float Grid5ActivationDistance = 128;
-
-
 static const float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
-static const float LevelSize[6] = {0.5, 1.0, 2.0, 4.0, 8.0, 16.0};
+static const float GridCellSize[6] = {0.5, 1.0, 2.0, 4.0, 8.0, 16.0};
+static const float GridSize[6] = {2408.0, 1024.0, 512.0, 256.0, 128.0, 64.0};
 
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
@@ -246,45 +239,96 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 }
 
 
-[numthreads(4, 4, 2)]
+[numthreads(1024, 1, 1)]
 void InitializeGrid(int GroupIndex : SV_GroupIndex)
 {
-    uint GridSize = 0;
+    uint LocalThreadSize = 1024;
+    uint GridBuffSize = 0;
     uint Gridstide = 0;
     
     if (GroupIndex == 0)
     {
-        Grid0.GetDimensions(GridSize, Gridstide);
+        Grid0.GetDimensions(GridBuffSize, Gridstide);
+        //GridBuffSize = 2097152;
+        int B = floor((GridBuffSize - 1.0) / LocalThreadSize);
+        int E = (GridBuffSize - 1.0) % LocalThreadSize; 
+        int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
         
-        int B = floor((GridSize - 1.0) / ThreadSize);;
-        int E = (GridSize - 1.0) % ThreadSize;
+        for (int Current_Dot_index = 0; Current_Dot_index < GridBuffSize; Current_Dot_index++)//(int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
+        {
+            Grid0[Current_Dot_index].position = float2((float)Current_Dot_index % GridSize[0], floor((float)Current_Dot_index / GridSize[0])); /// GridCellSize[0];
+        }
+    }
+    else if (GroupIndex == 1)
+    {
+        /*Grid1.GetDimensions(GridBuffSize, Gridstide);
+        
+        int B = floor((GridBuffSize - 1.0) / LocalThreadSize);
+        int E = (GridBuffSize - 1.0) % LocalThreadSize;
         int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
         int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
         
         for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
         {
-            //Grid0[].position = 
-        }
-    }
-    else if (GroupIndex == 1)
-    {
-        
+            Grid1[Current_Dot_index].position = float2((float)Current_Dot_index % GridSize[1], floor((float)Current_Dot_index / GridSize[1]));
+        }*/
     }
     else if (GroupIndex == 2)
     {
+        /*Grid2.GetDimensions(GridBuffSize, Gridstide);
         
+        int B = floor((GridBuffSize - 1.0) / LocalThreadSize);
+        int E = (GridBuffSize - 1.0) % LocalThreadSize;
+        int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+        
+        for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
+        {
+            Grid2[Current_Dot_index].position = float2((float)Current_Dot_index % GridSize[2], floor((float)Current_Dot_index / GridSize[2]));
+        }*/
     }
     else if (GroupIndex == 3)
     {
+        /*Grid3.GetDimensions(GridBuffSize, Gridstide);
         
+        int B = floor((GridBuffSize - 1.0) / LocalThreadSize);
+        int E = (GridBuffSize - 1.0) % LocalThreadSize;
+        int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+        
+        for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
+        {
+            Grid3[Current_Dot_index].position = float2((float)Current_Dot_index % GridSize[3], floor((float)Current_Dot_index / GridSize[3]));
+        }*/
     }
     else if (GroupIndex == 4)
     {
+        /*Grid4.GetDimensions(GridBuffSize, Gridstide);
         
+        int B = floor((GridBuffSize - 1.0) / LocalThreadSize);
+        int E = (GridBuffSize - 1.0) % LocalThreadSize;
+        int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+        
+        for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
+        {
+            Grid4[Current_Dot_index].position = float2((float)Current_Dot_index % GridSize[4], floor((float)Current_Dot_index / GridSize[4]));
+        }*/
     }
     else if (GroupIndex == 5)
     {
+        /*Grid5.GetDimensions(GridBuffSize, Gridstide);
         
+        int B = floor((GridBuffSize - 1.0) / LocalThreadSize);
+        int E = (GridBuffSize - 1.0) % LocalThreadSize;
+        int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+        
+        for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
+        {
+            Grid5[Current_Dot_index].position = float2((float)Current_Dot_index % GridSize[5], floor((float)Current_Dot_index / GridSize[5]));
+        }*/
     }
 }
 
@@ -310,7 +354,7 @@ void UpdateGrid(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
         {
             float2 DotPoss = inputData[Current_Dot_index].position;
-            float2 PossibleGridPoss = DotPoss - DotPoss % LevelSize[Level];
+            float2 PossibleGridPoss = DotPoss - DotPoss % GridCellSize[Level];
             
             bool isitaLonelyDot = true;
             //a possible Dot (Lonely Dot) without Grid. Now it needs to be found if there is an Grid0 that has the Dot

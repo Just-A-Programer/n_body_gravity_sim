@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: LODmat
-  m_Shader: {fileID: 4800000, guid: b5b00e2248b1b024b99ac09f0b4781fa, type: 3}
+  m_Name: Gridmat
+  m_Shader: {fileID: 4800000, guid: 5a129dff5c2e8cc2dab421f2310e1788, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -46,6 +46,8 @@ Material:
     - _EnableExternalAlpha: 0
     - _Glossiness: 0.5
     - _Metallic: 0
+    - _RENDER_DOT_MODE: 0
+    - _RENDER_GRID_MODE: 0
     - _RENDER_MODE: 0
     - _Stencil: 0
     - _StencilComp: 8
@@ -55,7 +57,7 @@ Material:
     - _UseUIAlphaClip: 0
     - _ZWrite: 0
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0, g: 0, b: 0.5882353, a: 0.5882353}
     - _Flip: {r: 1, g: 1, b: 1, a: 1}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []

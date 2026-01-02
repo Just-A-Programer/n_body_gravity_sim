@@ -6,7 +6,7 @@ Shader "Custom/InstancingShader"
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
-        _RENDER_MODE ("RENDER MODE", int) = 0
+        _RENDER_DOT_MODE ("RENDER DOT MODE", int) = 0
 
         /*
         RENDER_MODE:
@@ -56,7 +56,7 @@ Shader "Custom/InstancingShader"
 
             uniform StructuredBuffer<dotData> _dotData;
             
-            int _RENDER_MODE = 0;
+            int _RENDER_DOT_MODE = 0;
 
             v2f vert(appdata_base v, uint svInstanceID : SV_InstanceID)
             {
@@ -72,16 +72,16 @@ Shader "Custom/InstancingShader"
                 
                 float maxmass = 10;
 
-                if (_RENDER_MODE == 0){ // default Color
+                if (_RENDER_DOT_MODE == 0){ // default Color
                     o.color = float4(_dotData[instanceID].color.x, _dotData[instanceID].color.y, _dotData[instanceID].color.z, 1);
                 }
-                else if (_RENDER_MODE == 1){ // speed
+                else if (_RENDER_DOT_MODE == 1){ // speed
 
                     float currAbsVelo = sqrt(pow(_dotData[instanceID].velocity.x, 2) + pow(_dotData[instanceID].velocity.y, 2));
                     o.color = float4(clamp(currAbsVelo / 10, 0, 1), (1 - clamp(currAbsVelo / 10, 0, 1)), 0, 1);
 
                 }
-                else if (_RENDER_MODE == 2){ // mass
+                else if (_RENDER_DOT_MODE == 2){ // mass
                     o.color = float4(clamp(_dotData[instanceID].mass / maxmass, 0, 1), clamp(_dotData[instanceID].mass / maxmass, 0, 1), clamp(_dotData[instanceID].mass / maxmass, 0, 1), 1);
                 }
 
