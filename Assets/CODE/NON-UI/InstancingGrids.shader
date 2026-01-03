@@ -15,12 +15,17 @@ Shader "Custom/InstancingGrids"
         */
         
     }
-
+    
     SubShader
     {
+        Tags { "Queue"="Transparent" "RenderType"="Transparent" }
+
         Pass
         {
+            ZWrite Off
+            Blend SrcAlpha OneMinusSrcAlpha
             Cull Off
+            
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
@@ -31,16 +36,6 @@ Shader "Custom/InstancingGrids"
 
             float4      _Color;
             sampler2D   _MainTex;
-            
-            float4x4 TranslationMatrix(float3 t)
-            {
-                return float4x4(
-                    1, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0,
-                    t.x, t.y, t.z, 1
-                );
-            }
             
             struct Grid_str_ins
             {
@@ -68,7 +63,8 @@ Shader "Custom/InstancingGrids"
             
             uniform StructuredBuffer<Grid_str_ins> GridBuff;
             
-            float sensitivity = 10;
+            //float GridSideLenght = 1024;
+            float ScaleFactor;
             
             v2f vert(appdata_base v, uint svInstanceID : SV_InstanceID)
             {
@@ -77,11 +73,13 @@ Shader "Custom/InstancingGrids"
                 uint instanceID = GetIndirectInstanceID(svInstanceID);
                 
                 
-                float4 wpos = mul(TranslationMatrix(float3(0,0,0)), v.vertex + float4(float(GridBuff[instanceID].position.x), float(GridBuff[instanceID].position.y) , 0, 0));
-                o.pos = mul(UNITY_MATRIX_VP, wpos);
-                //o.color = float4(clamp(float(GridBuff[instanceID].position.x) / sensitivity, 0, 1), 0, clamp(float(GridBuff[instanceID].position.y) / sensitivity, 0, 1), 1);
-                o.color = _Color;
                 
+                float2 pos = float2(float(GridBuff[instanceID].position.x), float(GridBuff[instanceID].position.y)) / ScaleFactor;
+                float3 worldPos = float3(v.vertex.xy + pos,0);
+                o.pos = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
+
+                
+                o.color = _Color;
                 return o;
             }
 
