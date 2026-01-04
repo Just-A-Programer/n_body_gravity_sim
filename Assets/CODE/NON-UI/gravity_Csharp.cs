@@ -25,14 +25,10 @@ struct changeDotsStr_Csharp
     public Vector3 changeDataCol;
 }
 
-struct TheGrid_str
-{
-    public Vector2 position;
-}
-
 struct Grid_str_Csharp
 {
-    public Vector2Int position;
+    public Vector2 position;
+    public Vector2Int localposition;
     public Vector2 localCenterOfMass;
     public float mass;
 
@@ -54,13 +50,6 @@ struct miscellaneousData
     public int freeSpace;
 }
 
-struct DebugStruct
-{
-    public Vector2 DebugMatrix_n0;
-    public Vector2 DebugMatrix_n1;
-    public Vector2 DebugMatrix_n2;
-    public Vector2 DebugMatrix_n3;
-}
 
 #endregion
 
@@ -73,13 +62,11 @@ public class gravity_Csharp : MonoBehaviour
 
     //MODES
     [Header("MODES")]
-    public bool DEBUG_MODE;
     public bool RENDER_DOTS;
     [Range(0, 6)]
     public int  RENDER_GRID;
     public bool COMPUTE_SHADER;
     public int  RENDER_DOT_MODE;
-    public bool[] DebugMatrixShow = new bool[4];
 
 
 
@@ -94,7 +81,7 @@ public class gravity_Csharp : MonoBehaviour
     public int freeSpace;
 
     //THE GRIDS
-    public static Vector2 GridstartingPoss;
+    public Vector2 GridstartingPoss;
     private static float   GridSideLenght =   1024;
     private static float[] GridCellLenght = { 0.5f, 1f, 2f, 4f, 8f, 16f };
     private float[] GridTotalCellCount    =   new float[6];
@@ -133,12 +120,10 @@ public class gravity_Csharp : MonoBehaviour
     GraphicsBuffer GridBuffer3;
     GraphicsBuffer GridBuffer4;
     GraphicsBuffer GridBuffer5;
-    GraphicsBuffer TheGridBuffer;
 
     GraphicsBuffer DotBuffer;
     GraphicsBuffer ChangeBuffer;
     GraphicsBuffer miscellaneousBuffer;
-    GraphicsBuffer DebugBuffer;
 
     GraphicsBuffer DotBuffer_TMP;
 
@@ -149,8 +134,6 @@ public class gravity_Csharp : MonoBehaviour
     dot_str_Csharp[] Dotinput;
     changeDotsStr_Csharp[] ChangeInput;
     miscellaneousData[] miscellaneousInput;
-    DebugStruct[] debugInput;
-    DebugStruct[] debugResults;
     
     Grid_str_Csharp[] Grid0Input;
     Grid_str_Csharp[] Grid1Input;
@@ -158,7 +141,6 @@ public class gravity_Csharp : MonoBehaviour
     Grid_str_Csharp[] Grid3Input;
     Grid_str_Csharp[] Grid4Input;
     Grid_str_Csharp[] Grid5Input;
-    TheGrid_str[] TheGridInput;
 
 
     //KERNEL IDs
@@ -244,15 +226,13 @@ public class gravity_Csharp : MonoBehaviour
         DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
         ChangeBuffer =        new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(float) * (3 + 2 + 2 + 1 + 1) + sizeof(uint) * 1);
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 2);
-        DebugBuffer =         new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * 4 * 2);
         
-        GridBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[0], sizeof(float) * (2 + 1) + sizeof(int) * (2));
-        GridBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[1], sizeof(float) * (2 + 1) + sizeof(int) * (2));
-        GridBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[2], sizeof(float) * (2 + 1) + sizeof(int) * (2));
-        GridBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[3], sizeof(float) * (2 + 1) + sizeof(int) * (2));
-        GridBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[4], sizeof(float) * (2 + 1) + sizeof(int) * (2));
-        GridBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[5], sizeof(float) * (2 + 1) + sizeof(int) * (2));
-        TheGridBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 6, sizeof(float)*2)
+        GridBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[0], sizeof(float) * (2 + 2 + 1) + sizeof(int) * (2));
+        GridBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[1], sizeof(float) * (2 + 2 + 1) + sizeof(int) * (2));
+        GridBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[2], sizeof(float) * (2 + 2 + 1) + sizeof(int) * (2));
+        GridBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[3], sizeof(float) * (2 + 2 + 1) + sizeof(int) * (2));
+        GridBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[4], sizeof(float) * (2 + 2 + 1) + sizeof(int) * (2));
+        GridBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[5], sizeof(float) * (2 + 2 + 1) + sizeof(int) * (2));
 
         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
         
@@ -268,7 +248,6 @@ public class gravity_Csharp : MonoBehaviour
         Dotinput =           new dot_str_Csharp[dotCount];
         ChangeInput =        new changeDotsStr_Csharp[1];
         miscellaneousInput = new miscellaneousData[1];
-        debugInput =         new DebugStruct[dotCount];
         
         Grid0Input = new Grid_str_Csharp[ (int)GridTotalCellCount[0] ];
         Grid1Input = new Grid_str_Csharp[ (int)GridTotalCellCount[1] ];
@@ -276,8 +255,7 @@ public class gravity_Csharp : MonoBehaviour
         Grid3Input = new Grid_str_Csharp[ (int)GridTotalCellCount[3] ];
         Grid4Input = new Grid_str_Csharp[ (int)GridTotalCellCount[4] ];
         Grid5Input = new Grid_str_Csharp[ (int)GridTotalCellCount[5] ];
-
-        TheGridInput = new TheGrid_str[6];
+        
         
         #endregion
 
@@ -286,17 +264,7 @@ public class gravity_Csharp : MonoBehaviour
 
         //constants
         computeShader.SetFloat("G", G);
-
-
-        //debug mode
-        if (DEBUG_MODE)
-        {
-            computeShader.SetInt("DEBUGMODE", 1);
-        }
-        else
-        {
-            computeShader.SetInt("DEBUGMODE", 0);
-        }
+        
 
 
         //dot data
@@ -335,44 +303,41 @@ public class gravity_Csharp : MonoBehaviour
         ChangeInput[0].changeDataCol = new Vector3(0, 0, 0);
         
         //Grid input
-        //TheGrid
-
-        TheGridInput[0].position = GridstartingPoss[0];
-        TheGridInput[1].position = GridstartingPoss[1];
-        TheGridInput[2].position = GridstartingPoss[2];
-        TheGridInput[3].position = GridstartingPoss[3];
-        TheGridInput[4].position = GridstartingPoss[4];
-        TheGridInput[5].position = GridstartingPoss[5];
-        
         //grid0
         for (int i = 0; i < GridTotalCellCount[0]; i++)
         {
-            Grid0Input[i].position = new Vector2Int( (int)((i)%GridSideCellCount[0]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[0]) ) );
+            Grid0Input[i].localposition = new Vector2Int( (int)((i)%GridSideCellCount[0]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[0]) ) );
+            Grid0Input[i].position = GridstartingPoss;
         }
         //grid1
         for (int i = 0; i < GridTotalCellCount[1]; i++)
         {
-            Grid1Input[i].position = new Vector2Int( (int)((i)%GridSideCellCount[1]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[1]) ) );
+            Grid1Input[i].localposition = new Vector2Int( (int)((i)%GridSideCellCount[1]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[1]) ) );
+            Grid1Input[i].position = GridstartingPoss;
         }
         //grid2
         for (int i = 0; i < GridTotalCellCount[2]; i++)
         {
-            Grid2Input[i].position = new Vector2Int( (int)((i)%GridSideCellCount[2]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[2]) ) );
+            Grid2Input[i].localposition = new Vector2Int( (int)((i)%GridSideCellCount[2]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[2]) ) );
+            Grid2Input[i].position = GridstartingPoss;
         }
         //grid3
         for (int i = 0; i < GridTotalCellCount[3]; i++)
         {
-            Grid3Input[i].position = new Vector2Int( (int)((i)%GridSideCellCount[3]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[3]) ) );
+            Grid3Input[i].localposition = new Vector2Int( (int)((i)%GridSideCellCount[3]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[3]) ) );
+            Grid3Input[i].position = GridstartingPoss;
         }
         //grid4
         for (int i = 0; i < GridTotalCellCount[4]; i++)
         {
-            Grid4Input[i].position = new Vector2Int( (int)((i)%GridSideCellCount[4]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[4]) ) );
+            Grid4Input[i].localposition = new Vector2Int( (int)((i)%GridSideCellCount[4]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[4]) ) );
+            Grid4Input[i].position = GridstartingPoss;
         }
         //grid5
         for (int i = 0; i < GridTotalCellCount[5]; i++)
         {
-            Grid5Input[i].position = new Vector2Int( (int)((i)%GridSideCellCount[5]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[5]) ) );
+            Grid5Input[i].localposition = new Vector2Int( (int)((i)%GridSideCellCount[5]), (int)(MathF.Floor( (float)(i)/GridSideCellCount[5]) ) );
+            Grid5Input[i].position = GridstartingPoss;
         }
         
         //miscellaneous input
@@ -387,7 +352,6 @@ public class gravity_Csharp : MonoBehaviour
         DotBuffer.SetData(Dotinput);
         ChangeBuffer.SetData(ChangeInput);
         miscellaneousBuffer.SetData(miscellaneousInput);
-        DebugBuffer.SetData(debugInput);
         
         GridBuffer0.SetData(Grid0Input);
         GridBuffer1.SetData(Grid1Input);
@@ -395,9 +359,6 @@ public class gravity_Csharp : MonoBehaviour
         GridBuffer3.SetData(Grid3Input);
         GridBuffer4.SetData(Grid4Input);
         GridBuffer5.SetData(Grid5Input);
-        
-        TheGridBuffer.SetData(TheGridInput);
-        
         
         RebindGPUBuffers(new bool[5] { true, true, true, false, false });
 
@@ -854,11 +815,15 @@ public class gravity_Csharp : MonoBehaviour
         {
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(dot_kernel, "miscData",  miscellaneousBuffer);
-            computeShader.SetBuffer(dot_kernel, "debugData", DebugBuffer);
+            computeShader.SetBuffer(dot_kernel, "Grid0", GridBuffer0);
+            computeShader.SetBuffer(dot_kernel, "Grid1", GridBuffer1);
+            computeShader.SetBuffer(dot_kernel, "Grid2", GridBuffer2);
+            computeShader.SetBuffer(dot_kernel, "Grid3", GridBuffer3);
+            computeShader.SetBuffer(dot_kernel, "Grid4", GridBuffer4);
+            computeShader.SetBuffer(dot_kernel, "Grid5", GridBuffer5);
             computeShader.SetBuffer(trajectory_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(trajectory_kernel, "changeDots",  ChangeBuffer);
             computeShader.SetBuffer(trajectory_kernel, "miscData",  miscellaneousBuffer);
-            computeShader.SetBuffer(Grid_kernel, "TheGrid", TheGridBuffer);
             computeShader.SetBuffer(Grid_kernel, "Grid0", GridBuffer0);
             computeShader.SetBuffer(Grid_kernel, "Grid1", GridBuffer1);
             computeShader.SetBuffer(Grid_kernel, "Grid2", GridBuffer2);
@@ -913,26 +878,6 @@ public class gravity_Csharp : MonoBehaviour
 
     #region Button functions
 
-    public void ReadPos()
-    {
-        results = new dot_str_Csharp[500];
-        debugResults = new DebugStruct[500];
-
-        DotBuffer.GetData(results, 0, 0, 500);
-        DebugBuffer.GetData(debugResults, 0, 0, 500);
-
-        for (int i = 0; i < 500; i++)
-        {
-            Debug.Log($"RESULTS[{i}] = {results[i].position}");
-            if (DebugMatrixShow[0]) { Debug.Log($"    DEBUG_n0[{i}] = {debugResults[i].DebugMatrix_n0}"); }
-            if (DebugMatrixShow[1]) { Debug.Log($"        DEBUG_n1[{i}] = {debugResults[i].DebugMatrix_n1}"); }
-            if (DebugMatrixShow[2]) { Debug.Log($"            DEBUG_n2[{i}] = {debugResults[i].DebugMatrix_n2}"); }
-            if (DebugMatrixShow[3]) { Debug.Log($"                DEBUG_n3[{i}] = {debugResults[i].DebugMatrix_n3}"); }
-            Debug.Log("  ");
-        }
-
-    }
-
 
     public void ChangeMouseMode(int id)
     {
@@ -976,7 +921,6 @@ public class gravity_Csharp : MonoBehaviour
         DotBuffer.Release();
         ChangeBuffer.Release();
         miscellaneousBuffer.Release();
-        DebugBuffer.Release();
         dotargsbuffer.Release();
 
         GridBuffer0.Release();

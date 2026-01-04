@@ -39,7 +39,8 @@ Shader "Custom/InstancingGrids"
             
             struct Grid_str_ins
             {
-                int2 position; // strating from the bottom left corner of the grid
+                float2 position; // strating from the bottom left corner of the grid
+                int2 localposition;
                 float2 localCenterOfMass;
                 float mass;
             
@@ -72,9 +73,16 @@ Shader "Custom/InstancingGrids"
                 v2f o;
                 uint instanceID = GetIndirectInstanceID(svInstanceID);
                 
+                float halfcelllenght = 0;
                 
+                if (ScaleFactor == 2) {halfcelllenght = 0.25;}
+                else if (ScaleFactor == 1) {halfcelllenght = 0.5;}
+                else if (ScaleFactor == 0.5) {halfcelllenght = 1;}
+                else if (ScaleFactor == 0.25) {halfcelllenght = 2;}
+                else if (ScaleFactor == 0.125) {halfcelllenght = 4;}
+                else if (ScaleFactor == 0.0625) {halfcelllenght = 8;}
                 
-                float2 pos = float2(float(GridBuff[instanceID].position.x), float(GridBuff[instanceID].position.y)) / ScaleFactor;
+                float2 pos = float2(float(GridBuff[instanceID].localposition.x), float(GridBuff[instanceID].localposition.y)) / ScaleFactor + GridBuff[instanceID].position + float2(halfcelllenght, halfcelllenght);
                 float3 worldPos = float3(v.vertex.xy + pos,0);
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
 

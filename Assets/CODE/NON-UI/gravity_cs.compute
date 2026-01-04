@@ -32,14 +32,11 @@ struct changeDotsStr
     */
 };
 
-struct TheGrid_str
-{
-    float2 position;
-};
 
 struct Grid_str
 {
-    int2 position; // strating from the bottom left corner of the grid
+    float2 position; // strating from the bottom left corner of the grid
+    int2 localposition;
     float2 localCenterOfMass;
     float mass;
 
@@ -66,15 +63,6 @@ struct trajectoryPath
     float2 position;
 };
 
-struct Debug
-{
-    float2 DebugMatrix_n0;
-    float2 DebugMatrix_n1;
-    float2 DebugMatrix_n2;
-    float2 DebugMatrix_n3;
-};
-
-
 
 // constants or variables for physics
 float G; 
@@ -83,7 +71,6 @@ static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
 
 //MODES
-int DEBUGMODE = 0;
 int COLLISION = 0;
 
 //CSMAIN
@@ -121,12 +108,10 @@ RWStructuredBuffer<Grid_str> Grid2; // 2
 RWStructuredBuffer<Grid_str> Grid3; // 4
 RWStructuredBuffer<Grid_str> Grid4; // 8
 RWStructuredBuffer<Grid_str> Grid5; // 16
-RWStructuredBuffer<TheGrid_str> TheGrid;
 
 RWStructuredBuffer<changeDotsStr> changeDots;
 RWStructuredBuffer<miscellaneousData> miscData;
 RWStructuredBuffer<trajectoryPath> trajPath;
-RWStructuredBuffer<Debug> debugData;
 
 
 groupshared float2 calcForce[ThreadSize];
@@ -228,14 +213,6 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
     
     GroupMemoryBarrierWithGroupSync();
-    // debug output
-    if (GroupIndex == 0 && DEBUGMODE == 1)
-    {
-        debugData[DispatchGroupIndex].DebugMatrix_n2.x = 0;
-        debugData[DispatchGroupIndex].DebugMatrix_n2.y = 0;
-        debugData[DispatchGroupIndex].DebugMatrix_n3.x = 0;
-        debugData[DispatchGroupIndex].DebugMatrix_n3.y = 0;
-    }
     // output
     if (GroupIndex == 0)
     {
