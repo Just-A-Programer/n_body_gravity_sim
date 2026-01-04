@@ -1,5 +1,4 @@
 #pragma kernel CSMain
-
 #pragma kernel UpdateGrid
 #pragma kernel AddorRemoveDots
 #pragma kernel CopyBuffer
@@ -31,6 +30,11 @@ struct changeDotsStr
     
     69: Nothing
     */
+};
+
+struct TheGrid_str
+{
+    float2 position;
 };
 
 struct Grid_str
@@ -98,8 +102,10 @@ float2 CenterBallPoss;
 groupshared float2 calcForceTraj[ThreadSize];
 
 
-//Grid distance for calculations
+//Grid kernel
+bool IsThisFristFrame = true;
 float GridSideLenght;
+float4 GridPossition[6];
 float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
 float GridCellLenght[6];
 float GridTotalCellCount[6];
@@ -115,7 +121,7 @@ RWStructuredBuffer<Grid_str> Grid2; // 2
 RWStructuredBuffer<Grid_str> Grid3; // 4
 RWStructuredBuffer<Grid_str> Grid4; // 8
 RWStructuredBuffer<Grid_str> Grid5; // 16
-
+RWStructuredBuffer<TheGrid_str> TheGrid;
 
 RWStructuredBuffer<changeDotsStr> changeDots;
 RWStructuredBuffer<miscellaneousData> miscData;
@@ -249,38 +255,10 @@ void UpdateGrid(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     
     
     int Level = GroupID.x;
-    uint GridCount = 0;
     uint dotCount = uint(miscData[0].dotCount);
     
-    
-    //Add new Grid's
-    int B = floor((dotCount - 1.0) / ThreadSize);;
-    int E = (dotCount - 1.0) % ThreadSize;
-    int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
-    int End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
-        
-    if (Level == 0)
-    {
-        for (int Current_Dot_index = Start_cord; Current_Dot_index <= End_cord; Current_Dot_index++)
-        {
-            float2 DotPoss = inputData[Current_Dot_index].position;
-            float2 PossibleGridPoss = DotPoss - DotPoss % GridCellLenght[Level];
-            
-            bool isitaLonelyDot = true;
-            //a possible Dot (Lonely Dot) without Grid. Now it needs to be found if there is an Grid0 that has the Dot
-            for (int i = 0; i < dotCount; i++) { if (Grid0[i].position.x == PossibleGridPoss.x && Grid0[i].position.y == PossibleGridPoss.y) { isitaLonelyDot = false; break;} }
-            
-            //it has
-            if (!isitaLonelyDot) {continue;}
-            
-            //it hasnt
-            //a new Grid0 is added with any other larger Grid(1-5)s if they are missing as well
-            
-        }
-    }
-    
     //Updates Grid's mass and the center of it
-    
+      
     
 }
 
