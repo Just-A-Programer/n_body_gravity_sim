@@ -87,7 +87,7 @@ Shader "Custom/InstancingGrids"
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
 
                 
-                o.color = _Color;
+                o.color = float4(GridBuff[instanceID].mass/1,GridBuff[instanceID].mass/1,GridBuff[instanceID].mass/1,1);//_Color;
                 return o;
             }
 

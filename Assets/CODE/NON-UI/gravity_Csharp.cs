@@ -29,7 +29,7 @@ struct Grid_str_Csharp
 {
     public Vector2 position;
     public Vector2Int localposition;
-    public Vector2 localCenterOfMass;
+    public Vector2 CenterOfMass;
     public float mass;
 
     /*
@@ -146,7 +146,7 @@ public class gravity_Csharp : MonoBehaviour
     //KERNEL IDs
     int dot_kernel;
     int change_kernel;
-    int Grid_kernel;
+    int Grid_kernel0;
     int CopyBuff_kernel;
     int trajectory_kernel;
 
@@ -176,7 +176,7 @@ public class gravity_Csharp : MonoBehaviour
     string next_frame_id = "";
     int newDotAmount;
     bool resizing = false;
-
+    const int batchSize = 65535;
     
     #endregion
 
@@ -239,8 +239,7 @@ public class gravity_Csharp : MonoBehaviour
 
         dot_kernel        = computeShader.FindKernel("CSMain");
         change_kernel     = computeShader.FindKernel("AddorRemoveDots");
-        
-        Grid_kernel       = computeShader.FindKernel("UpdateGrid");
+        Grid_kernel0       = computeShader.FindKernel("UpdateGrid0");
         CopyBuff_kernel   = computeShader.FindKernel("CopyBuffer");
         trajectory_kernel = computeShader.FindKernel("CalcTrajectory");
 
@@ -529,10 +528,19 @@ public class gravity_Csharp : MonoBehaviour
     private void FixedUpdate()
     {          
         computeShader.SetFloat("fixedDeltaTime", Time.fixedDeltaTime);
-
+        
+        
+        for (int i = 0; i < (float)GridTotalCellCount[0]/(float)batchSize; i++)
+        {
+            computeShader.SetInt("DispatchOffsetGrid0", i*batchSize);
+            computeShader.Dispatch(Grid_kernel0, (int)MathF.Min(GridTotalCellCount[0]-i*batchSize, batchSize), 1, 1);
+            //Debug.Log(i.ToString() + "  " + MathF.Min(GridTotalCellCount[0]-i*batchSize, batchSize).ToString());
+        }
+        
+        
         if (COMPUTE_SHADER)
         {
-            int batchSize = 65535;
+            
             for (int i = 0; i < (float)dotCount/(float)batchSize; i++)
             {
                 computeShader.SetInt("DispatchOffset", i*batchSize);
@@ -824,13 +832,14 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.SetBuffer(trajectory_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(trajectory_kernel, "changeDots",  ChangeBuffer);
             computeShader.SetBuffer(trajectory_kernel, "miscData",  miscellaneousBuffer);
-            computeShader.SetBuffer(Grid_kernel, "Grid0", GridBuffer0);
-            computeShader.SetBuffer(Grid_kernel, "Grid1", GridBuffer1);
-            computeShader.SetBuffer(Grid_kernel, "Grid2", GridBuffer2);
-            computeShader.SetBuffer(Grid_kernel, "Grid3", GridBuffer3);
-            computeShader.SetBuffer(Grid_kernel, "Grid4", GridBuffer4);
-            computeShader.SetBuffer(Grid_kernel, "Grid5", GridBuffer5);
-            computeShader.SetBuffer(Grid_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(Grid_kernel0, "Grid0", GridBuffer0);
+            computeShader.SetBuffer(Grid_kernel0, "inputData", DotBuffer);
+            computeShader.SetBuffer(Grid_kernel0, "miscData",  miscellaneousBuffer);
+            /*computeShader.SetBuffer(Grid_kernel1, "Grid1", GridBuffer1);
+            computeShader.SetBuffer(Grid_kernel2, "Grid2", GridBuffer2);
+            computeShader.SetBuffer(Grid_kernel3, "Grid3", GridBuffer3);
+            computeShader.SetBuffer(Grid_kernel4, "Grid4", GridBuffer4);
+            computeShader.SetBuffer(Grid_kernel5, "Grid5", GridBuffer5);*/
         }
 
         if (exc[1])

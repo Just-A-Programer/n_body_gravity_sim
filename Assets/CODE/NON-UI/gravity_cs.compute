@@ -1,5 +1,5 @@
 #pragma kernel CSMain
-#pragma kernel UpdateGrid
+#pragma kernel UpdateGrid0
 #pragma kernel AddorRemoveDots
 #pragma kernel CopyBuffer
 #pragma kernel CalcTrajectory
@@ -37,7 +37,7 @@ struct Grid_str
 {
     float2 position; // strating from the bottom left corner of the grid
     int2 localposition;
-    float2 localCenterOfMass;
+    float2 CenterOfMass;
     float mass;
 
     /*
@@ -91,12 +91,26 @@ groupshared float2 calcForceTraj[ThreadSize];
 
 //Grid kernel
 bool IsThisFristFrame = true;
+float2 GridTargetPosition;
 float GridSideLenght;
-float4 GridPossition[6];
 float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
 float GridCellLenght[6];
 float GridTotalCellCount[6];
 float GridSideCellCount[6];
+
+//Grid update kernel
+groupshared float2 cellcenterofmass = 0;
+groupshared float cellmass[32];
+groupshared int cellcount[32];
+groupshared float mpx[32]; // Mass * Position X
+groupshared float mpy[32]; // Mass * Position Y
+int DispatchOffsetGrid0;
+int DispatchOffsetGrid1;
+int DispatchOffsetGrid2;
+int DispatchOffsetGrid3;
+int DispatchOffsetGrid4;
+int DispatchOffsetGrid5;
+
 
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
@@ -194,7 +208,17 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     }
     
     GroupMemoryBarrierWithGroupSync();
-
+    
+    /*
+        UPDATING THE GRIDS
+    */
+    if (currPoss.x >= Grid0[0].position && currPoss.y >= Grid0[0].position && currPoss.x < Grid0[0].position.x + GridSideLenght && currPoss.y < Grid0[0].position.y + GridSideLenght)
+    {
+        //grid0
+        float gridindex = 
+    }
+    
+    
     /*
         COLLISION DETECTION
     */
@@ -228,15 +252,65 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
 
 [numthreads(4, 4, 2)]
-void UpdateGrid(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+void UpdateGrid0(int GroupIndex : SV_GroupIndex){
+    
+    const static float CellLenght = 0.5;
+    int tGI = GroupIndex + DispatchOffsetGrid0; // totalGroupIndex
     
     
-    int Level = GroupID.x;
+    //    Updates everyones grand positions
+    Grid0[tGI].position = GridTargetPosition;
+    
+    float2 position = GridTargetPosition;
+    int2 localposition = Grid0[tGI].localposition;
+    float2 Absposs = Grid0[tGI].position + (Grid0[tGI].localposition * CellLenght);
+    
     uint dotCount = uint(miscData[0].dotCount);
     
-    //Updates Grid's mass and the center of it
-      
+    //    Updates Grid's mass and the center of it
     
+    int B = floor((dotCount - 1.0) / ThreadSize);
+    int E = (dotCount - 1.0) % ThreadSize;
+    int Start_cord = (B + 1.0) * floor(min(E, (tGI - 1.0)) + 1.0) + (B) * floor(max((tGI - E - 1.0), 0.0));
+    int End_cord   = (B + 1.0) * floor(min(E, tGI) + 1.0) + (B) * floor(max((tGI - E), 0.0)) - 1.0;
+    
+    //for loops throu every dot
+    for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
+    {
+        //check if the dot is in the cell and if it has mass
+        if (inputData[Current_Target_index].mass != 0 && !(Absposs.x >= inputData[Current_Target_index].position.x && Absposs.y >= inputData[Current_Target_index].position.y && Absposs.x + CellLenght < inputData[Current_Target_index].position.x && Absposs.y + CellLenght < inputData[Current_Target_index].position.y))
+            continue;
+        
+        cellcount[tGI]++;
+        cellmass[tGI] += inputData[Current_Target_index].mass;
+        mpx[tGI] += inputData[Current_Target_index].mass * inputData[Current_Target_index].position.x;
+        mpy[tGI] += inputData[Current_Target_index].mass * inputData[Current_Target_index].position.y;
+    }
+    
+    //sums up every threads result and calculates center of mass
+    GroupMemoryBarrierWithGroupSync();
+    if (tGI == 0)
+    {
+        int summcellcount = 0;
+        float summcellmass = 0;
+        float summmpx = 0;
+        float summmpy = 0;
+        cellcenterofmass = float2(0,0);
+        
+        for (int i = 0; i < ThreadSize-1; i++)
+        {
+            summcellcount += cellcount[i];
+            summcellmass += cellmass[i];
+            summmpx += mpx[i];
+            summmpy += mpy[i];
+        }
+        
+        Grid0[tGI].mass = summcellmass;
+        
+        cellcenterofmass = float2(summmpx/summcellmass, summmpy/summcellmass);
+        
+        Grid0[tGI].CenterOfMass = cellcenterofmass;
+    }
 }
 
 
