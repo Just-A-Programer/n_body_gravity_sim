@@ -1,5 +1,16 @@
 #pragma kernel CSMain
+#pragma kernel WipeGrid0
+#pragma kernel WipeGrid1
+#pragma kernel WipeGrid2
+#pragma kernel WipeGrid3
+#pragma kernel WipeGrid4
+#pragma kernel WipeGrid5
 #pragma kernel UpdateGrid0
+#pragma kernel UpdateGrid1
+#pragma kernel UpdateGrid2
+#pragma kernel UpdateGrid3
+#pragma kernel UpdateGrid4
+#pragma kernel UpdateGrid5
 #pragma kernel AddorRemoveDots
 #pragma kernel CopyBuffer
 #pragma kernel CalcTrajectory
@@ -36,9 +47,8 @@ struct changeDotsStr
 struct Grid_str
 {
     float2 position; // strating from the bottom left corner of the grid
-    int2 localposition;
-    float2 CenterOfMass;
-    float mass;
+    int2 MassTPossition;
+    int mass;
 
     /*
     Grid Sizes (6):
@@ -69,6 +79,7 @@ float G;
 float fixedDeltaTime;
 static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
+static const int FloatIntScaler = 1000000; // 10^6
 
 //MODES
 int COLLISION = 0;
@@ -91,7 +102,7 @@ groupshared float2 calcForceTraj[ThreadSize];
 
 //Grid kernel
 bool IsThisFristFrame = true;
-float2 GridTargetPosition;
+float4 GridTargetPosition;
 float GridSideLenght;
 float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
 float GridCellLenght[6];
@@ -104,12 +115,12 @@ groupshared float cellmass[32];
 groupshared int cellcount[32];
 groupshared float mpx[32]; // Mass * Position X
 groupshared float mpy[32]; // Mass * Position Y
-int DispatchOffsetGrid0;
-int DispatchOffsetGrid1;
-int DispatchOffsetGrid2;
-int DispatchOffsetGrid3;
-int DispatchOffsetGrid4;
-int DispatchOffsetGrid5;
+int DispatchOffset_UG0;
+int DispatchOffset_UG1;
+int DispatchOffset_UG2;
+int DispatchOffset_UG3;
+int DispatchOffset_UG4;
+int DispatchOffset_UG5;
 
 
 
@@ -131,6 +142,176 @@ RWStructuredBuffer<trajectoryPath> trajPath;
 groupshared float2 calcForce[ThreadSize];
 
 
+
+
+[numthreads(1024, 1, 1)]
+void WipeGrid0(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= GridTotalCellCount[0]) { return; }
+    
+    Grid0[id.x].mass = 0;
+    Grid0[id.x].MassTPossition = 0;
+    Grid0[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+}
+
+[numthreads(1024, 1, 1)]
+void WipeGrid1(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= GridTotalCellCount[1]) { return; }
+    
+    Grid1[id.x].mass = 0;
+    Grid1[id.x].MassTPossition = 0;
+    Grid1[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+}
+
+[numthreads(1024, 1, 1)]
+void WipeGrid2(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= GridTotalCellCount[2]) { return; }
+    
+    Grid2[id.x].mass = 0;
+    Grid2[id.x].MassTPossition = 0;
+    Grid2[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+}
+
+[numthreads(1024, 1, 1)]
+void WipeGrid3(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= GridTotalCellCount[3]) { return; }
+    
+    Grid3[id.x].mass = 0;
+    Grid3[id.x].MassTPossition = 0;
+    Grid3[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+}
+
+[numthreads(1024, 1, 1)]
+void WipeGrid4(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= GridTotalCellCount[4]) { return; }
+    
+    Grid4[id.x].mass = 0;
+    Grid4[id.x].MassTPossition = 0;
+    Grid4[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+}
+
+[numthreads(1024, 1, 1)]
+void WipeGrid5(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= GridTotalCellCount[5]) { return; }
+    
+    Grid5[id.x].mass = 0;
+    Grid5[id.x].MassTPossition = 0;
+    Grid5[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+}
+
+
+
+
+[numthreads(4, 4, 2)]
+void UpdateGrid0(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset_UG0; //index of the current group
+    
+    float currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    
+    if (!(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght && currPoss.y < GridTargetPosition.y + GridSideLenght))
+        return;
+    
+    float cellindex = floor(currPoss.y/GridCellLenght[0]) * GridSideCellCount[0] + floor(currPoss.x/GridCellLenght[0]);
+    
+    InterlockedAdd(Grid0[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid0[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+}
+
+[numthreads(4, 4, 2)]
+void UpdateGrid1(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset_UG1; //index of the current group
+    
+    float currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    
+    if (!(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght && currPoss.y < GridTargetPosition.y + GridSideLenght))
+        return;
+    
+    float cellindex = floor(currPoss.y/GridCellLenght[1]) * GridSideCellCount[1] + floor(currPoss.x/GridCellLenght[1]);
+    
+    InterlockedAdd(Grid1[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid1[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+}
+
+[numthreads(4, 4, 2)]
+void UpdateGrid2(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset_UG2; //index of the current group
+    
+    float currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    
+    if (!(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght && currPoss.y < GridTargetPosition.y + GridSideLenght))
+        return;
+    
+    float cellindex = floor(currPoss.y/GridCellLenght[2]) * GridSideCellCount[2] + floor(currPoss.x/GridCellLenght[2]);
+    
+    InterlockedAdd(Grid2[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid2[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+}
+
+[numthreads(4, 4, 2)]
+void UpdateGrid3(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset_UG3; //index of the current group
+    
+    float currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    
+    if (!(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght && currPoss.y < GridTargetPosition.y + GridSideLenght))
+        return;
+    
+    float cellindex = floor(currPoss.y/GridCellLenght[3]) * GridSideCellCount[3] + floor(currPoss.x/GridCellLenght[3]);
+    
+    InterlockedAdd(Grid3[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid3[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+}
+
+[numthreads(4, 4, 2)]
+void UpdateGrid4(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset_UG4; //index of the current group
+    
+    float currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    
+    if (!(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght && currPoss.y < GridTargetPosition.y + GridSideLenght))
+        return;
+    
+    float cellindex = floor(currPoss.y/GridCellLenght[4]) * GridSideCellCount[4] + floor(currPoss.x/GridCellLenght[4);
+    
+    InterlockedAdd(Grid4[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid4[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+}
+
+[numthreads(4, 4, 2)]
+void UpdateGrid5(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+    
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset_UG5; //index of the current group
+    
+    float currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    
+    if (!(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght && currPoss.y < GridTargetPosition.y + GridSideLenght))
+        return;
+    
+    float cellindex = floor(currPoss.y/GridCellLenght[5]) * GridSideCellCount[5] + floor(currPoss.x/GridCellLenght[5]);
+    
+    InterlockedAdd(Grid5[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid5[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+}
+
+
+
+
 [numthreads(4, 4, 2)]
 void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
@@ -150,8 +331,8 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     
     int Start_cord = 0;
     int End_cord = 0;
-
-    int limit = 20000;
+    
+    
     // calculate everybodies forces
     if (DispatchGroupIndex <= dotCount && currMass != 0)
     {
@@ -210,16 +391,6 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     GroupMemoryBarrierWithGroupSync();
     
     /*
-        UPDATING THE GRIDS
-    */
-    if (currPoss.x >= Grid0[0].position && currPoss.y >= Grid0[0].position && currPoss.x < Grid0[0].position.x + GridSideLenght && currPoss.y < Grid0[0].position.y + GridSideLenght)
-    {
-        //grid0
-        float gridindex = 
-    }
-    
-    
-    /*
         COLLISION DETECTION
     */
     
@@ -248,70 +419,6 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 }
 
 
-
-
-
-[numthreads(4, 4, 2)]
-void UpdateGrid0(int GroupIndex : SV_GroupIndex){
-    
-    const static float CellLenght = 0.5;
-    int tGI = GroupIndex + DispatchOffsetGrid0; // totalGroupIndex
-    
-    
-    //    Updates everyones grand positions
-    Grid0[tGI].position = GridTargetPosition;
-    
-    float2 position = GridTargetPosition;
-    int2 localposition = Grid0[tGI].localposition;
-    float2 Absposs = Grid0[tGI].position + (Grid0[tGI].localposition * CellLenght);
-    
-    uint dotCount = uint(miscData[0].dotCount);
-    
-    //    Updates Grid's mass and the center of it
-    
-    int B = floor((dotCount - 1.0) / ThreadSize);
-    int E = (dotCount - 1.0) % ThreadSize;
-    int Start_cord = (B + 1.0) * floor(min(E, (tGI - 1.0)) + 1.0) + (B) * floor(max((tGI - E - 1.0), 0.0));
-    int End_cord   = (B + 1.0) * floor(min(E, tGI) + 1.0) + (B) * floor(max((tGI - E), 0.0)) - 1.0;
-    
-    //for loops throu every dot
-    for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
-    {
-        //check if the dot is in the cell and if it has mass
-        if (inputData[Current_Target_index].mass != 0 && !(Absposs.x >= inputData[Current_Target_index].position.x && Absposs.y >= inputData[Current_Target_index].position.y && Absposs.x + CellLenght < inputData[Current_Target_index].position.x && Absposs.y + CellLenght < inputData[Current_Target_index].position.y))
-            continue;
-        
-        cellcount[tGI]++;
-        cellmass[tGI] += inputData[Current_Target_index].mass;
-        mpx[tGI] += inputData[Current_Target_index].mass * inputData[Current_Target_index].position.x;
-        mpy[tGI] += inputData[Current_Target_index].mass * inputData[Current_Target_index].position.y;
-    }
-    
-    //sums up every threads result and calculates center of mass
-    GroupMemoryBarrierWithGroupSync();
-    if (tGI == 0)
-    {
-        int summcellcount = 0;
-        float summcellmass = 0;
-        float summmpx = 0;
-        float summmpy = 0;
-        cellcenterofmass = float2(0,0);
-        
-        for (int i = 0; i < ThreadSize-1; i++)
-        {
-            summcellcount += cellcount[i];
-            summcellmass += cellmass[i];
-            summmpx += mpx[i];
-            summmpy += mpy[i];
-        }
-        
-        Grid0[tGI].mass = summcellmass;
-        
-        cellcenterofmass = float2(summmpx/summcellmass, summmpy/summcellmass);
-        
-        Grid0[tGI].CenterOfMass = cellcenterofmass;
-    }
-}
 
 
 

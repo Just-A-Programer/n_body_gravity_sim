@@ -27,6 +27,8 @@ Shader "Custom/InstancingGrids"
             Cull Off
             
             CGPROGRAM
+            // Upgrade NOTE: excluded shader from DX11, OpenGL ES 2.0 because it uses unsized arrays
+            #pragma exclude_renderers d3d11 gles
             #pragma vertex vert
             #pragma fragment frag
 
@@ -40,9 +42,8 @@ Shader "Custom/InstancingGrids"
             struct Grid_str_ins
             {
                 float2 position; // strating from the bottom left corner of the grid
-                int2 localposition;
-                float2 localCenterOfMass;
-                float mass;
+                int2 MassTPossition;
+                int mass;
             
                 /*
                 Grid Sizes (6):
@@ -71,23 +72,28 @@ Shader "Custom/InstancingGrids"
             {
                 InitIndirectDrawArgs(0);
                 v2f o;
+                
+                float sensitivity = 100.0;
                 uint instanceID = GetIndirectInstanceID(svInstanceID);
+                float GridSideCellLenght[6] = {2048, 1024, 512, 256, 128, 64};
+                float halfcelllenght[6] = {0.25,0.5,1,2,4,8};
+                static const int FloatIntScaler = 1000000; // 10^6
                 
-                float halfcelllenght = 0;
+                float Level = 0;
                 
-                if (ScaleFactor == 2) {halfcelllenght = 0.25;}
-                else if (ScaleFactor == 1) {halfcelllenght = 0.5;}
-                else if (ScaleFactor == 0.5) {halfcelllenght = 1;}
-                else if (ScaleFactor == 0.25) {halfcelllenght = 2;}
-                else if (ScaleFactor == 0.125) {halfcelllenght = 4;}
-                else if (ScaleFactor == 0.0625) {halfcelllenght = 8;}
+                if (ScaleFactor == 2) {Level = 0;}
+                else if (ScaleFactor == 1) {Level = 1;}
+                else if (ScaleFactor == 0.5) {Level = 2;}
+                else if (ScaleFactor == 0.25) {Level = 3;}
+                else if (ScaleFactor == 0.125) {Level = 4;}
+                else if (ScaleFactor == 0.0625) {Level = 5;}
                 
-                float2 pos = float2(float(GridBuff[instanceID].localposition.x), float(GridBuff[instanceID].localposition.y)) / ScaleFactor + GridBuff[instanceID].position + float2(halfcelllenght, halfcelllenght);
+                float2 pos = float2(float(instanceID % GridSideCellLenght[Level]), float(instanceID / GridSideCellLenght[Level])) / ScaleFactor + GridBuff[instanceID].position + float2(halfcelllenght[Level], halfcelllenght[Level]);
                 float3 worldPos = float3(v.vertex.xy + pos,0);
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
 
                 
-                o.color = float4(GridBuff[instanceID].mass/1,GridBuff[instanceID].mass/1,GridBuff[instanceID].mass/1,1);//_Color;
+                o.color = float4(float(float(GridBuff[instanceID].mass)/FloatIntScaler)/sensitivity,float(GridBuff[instanceID].mass)/FloatIntScaler/sensitivity,float(GridBuff[instanceID].mass)/FloatIntScaler/sensitivity,1);//_Color;
                 return o;
             }
 

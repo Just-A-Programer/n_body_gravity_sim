@@ -5680,7 +5680,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3491dd77011c6bb41a75fb8510c2322e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  RENDER_DOTS: 1
+  RENDER_DOTS: 0
   RENDER_GRID: 1
   COMPUTE_SHADER: 1
   RENDER_DOT_MODE: 0
@@ -6026,7 +6026,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: -1000
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.2924528, g: 0.2924528, b: 0.2924528, a: 0.4745098}
+  m_Color: {r: 0.2924528, g: 0.2924528, b: 0.2924528, a: 0.12156863}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
