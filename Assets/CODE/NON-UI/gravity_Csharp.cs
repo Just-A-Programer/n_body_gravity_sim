@@ -30,6 +30,7 @@ struct Grid_str_Csharp
     public Vector2 position;
     public Vector2Int MassTPossition;
     public int mass;
+    public int jailerID;
 
     /*
     Grid Sizes (6):
@@ -82,7 +83,7 @@ public class gravity_Csharp : MonoBehaviour
     //THE GRIDS
     public Vector2 GridstartingPoss;
     private static float   GridSideLenght =   1024;
-    private static float[] GridCellLenght = { 0.5f, 1f, 2f, 4f, 8f, 16f };
+    private static float[] GridCellLenght = { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f };
     private float[] GridTotalCellCount    =   new float[6];
     private float[] GridSideCellCount     = { 2048f, 1024f, 512f, 256f, 128f, 64f };
     
@@ -144,9 +145,21 @@ public class gravity_Csharp : MonoBehaviour
 
     //KERNEL IDs
     int Wipe0_kernel;
+    int Wipe1_kernel;
+    int Wipe2_kernel;
+    int Wipe3_kernel;
+    int Wipe4_kernel;
+    int Wipe5_kernel;
+
+    int UptGrid0_kernel;
+    int UptGrid1_kernel;
+    int UptGrid2_kernel;
+    int UptGrid3_kernel;
+    int UptGrid4_kernel;
+    int UptGrid5_kernel;
+    
     int dot_kernel;
     int change_kernel;
-    int UptGrid0_kernel;
     int CopyBuff_kernel;
     int trajectory_kernel;
 
@@ -180,6 +193,22 @@ public class gravity_Csharp : MonoBehaviour
     
     #endregion
 
+
+
+    Vector4 floatToVector4(float fl) { return new Vector4(fl, 0f, 0f, 0f); }
+
+    Vector4[] floatArrToVector4(float[] fl)
+    {
+        Vector4[] arr = new Vector4[fl.Length];
+        for (int i = 0; i < fl.Length; i++)
+        {
+            arr[i] = new Vector4(fl[i], 0f, 0f, 0f);
+        }
+        return arr;
+    }
+
+    
+    
     private Mesh GenerateQuad(float D)
     {
         Mesh m = new Mesh();
@@ -227,20 +256,32 @@ public class gravity_Csharp : MonoBehaviour
         ChangeBuffer =        new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(float) * (3 + 2 + 2 + 1 + 1) + sizeof(uint) * 1);
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 2);
         
-        GridBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[0], sizeof(float) * (2 + 2 + 1));
-        GridBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[1], sizeof(float) * (2 + 2 + 1));
-        GridBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[2], sizeof(float) * (2 + 2 + 1));
-        GridBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[3], sizeof(float) * (2 + 2 + 1));
-        GridBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[4], sizeof(float) * (2 + 2 + 1));
-        GridBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[5], sizeof(float) * (2 + 2 + 1));
+        GridBuffer0 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[0], sizeof(float) * (2 + 2 + 1) + sizeof(int) * 1);
+        GridBuffer1 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[1], sizeof(float) * (2 + 2 + 1) + sizeof(int) * 1);
+        GridBuffer2 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[2], sizeof(float) * (2 + 2 + 1) + sizeof(int) * 1);
+        GridBuffer3 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[3], sizeof(float) * (2 + 2 + 1) + sizeof(int) * 1);
+        GridBuffer4 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[4], sizeof(float) * (2 + 2 + 1) + sizeof(int) * 1);
+        GridBuffer5 = new GraphicsBuffer(GraphicsBuffer.Target.Structured, (int)GridTotalCellCount[5], sizeof(float) * (2 + 2 + 1) + sizeof(int) * 1);
 
         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
 
 
         Wipe0_kernel      = computeShader.FindKernel("WipeGrid0");
+        Wipe1_kernel      = computeShader.FindKernel("WipeGrid1");
+        Wipe2_kernel      = computeShader.FindKernel("WipeGrid2");
+        Wipe3_kernel      = computeShader.FindKernel("WipeGrid3");
+        Wipe4_kernel      = computeShader.FindKernel("WipeGrid4");
+        Wipe5_kernel      = computeShader.FindKernel("WipeGrid5");
+        
+        UptGrid0_kernel   = computeShader.FindKernel("UpdateGrid0");
+        UptGrid1_kernel   = computeShader.FindKernel("UpdateGrid1");
+        UptGrid2_kernel   = computeShader.FindKernel("UpdateGrid2");
+        UptGrid3_kernel   = computeShader.FindKernel("UpdateGrid3");
+        UptGrid4_kernel   = computeShader.FindKernel("UpdateGrid4");
+        UptGrid5_kernel   = computeShader.FindKernel("UpdateGrid5");
+
         dot_kernel        = computeShader.FindKernel("CSMain");
         change_kernel     = computeShader.FindKernel("AddorRemoveDots");
-        UptGrid0_kernel   = computeShader.FindKernel("UpdateGrid0");
         CopyBuff_kernel   = computeShader.FindKernel("CopyBuffer");
         trajectory_kernel = computeShader.FindKernel("CalcTrajectory");
 
@@ -408,7 +449,7 @@ public class gravity_Csharp : MonoBehaviour
         GridMaterial[0].renderQueue = 2000;
         
         GridMaterial[0].SetBuffer("GridBuff", GridBuffer0);
-        GridMaterial[0].SetFloat("ScaleFactor", 2f);
+        GridMaterial[0].SetFloat("Level", 0);
         
         //grid1
         RenderParams rp_grid1 = new RenderParams(GridMaterial[1])
@@ -428,7 +469,7 @@ public class gravity_Csharp : MonoBehaviour
         GridMaterial[1].renderQueue = 2000;
         
         GridMaterial[1].SetBuffer("GridBuff", GridBuffer1);
-        GridMaterial[1].SetFloat("ScaleFactor", 1f);
+        GridMaterial[1].SetInt("Level", 1);
         
         //grid2
         RenderParams rp_grid2 = new RenderParams(GridMaterial[2])
@@ -448,7 +489,7 @@ public class gravity_Csharp : MonoBehaviour
         GridMaterial[2].renderQueue = 2000;
         
         GridMaterial[2].SetBuffer("GridBuff", GridBuffer2);
-        GridMaterial[2].SetFloat("ScaleFactor", 0.5f);
+        GridMaterial[2].SetInt("Level", 2);
         
         //grid3
         RenderParams rp_grid3 = new RenderParams(GridMaterial[3])
@@ -468,7 +509,7 @@ public class gravity_Csharp : MonoBehaviour
         GridMaterial[3].renderQueue = 2000;
         
         GridMaterial[3].SetBuffer("GridBuff", GridBuffer3);
-        GridMaterial[3].SetFloat("ScaleFactor", 0.25f);
+        GridMaterial[3].SetInt("Level", 3);
         
         //grid4
         RenderParams rp_grid4 = new RenderParams(GridMaterial[4])
@@ -488,7 +529,7 @@ public class gravity_Csharp : MonoBehaviour
         GridMaterial[4].renderQueue = 2000;
         
         GridMaterial[4].SetBuffer("GridBuff", GridBuffer4);
-        GridMaterial[4].SetFloat("ScaleFactor", 0.125f);
+        GridMaterial[4].SetInt("Level", 4);
         
         //grid5
         RenderParams rp_grid5 = new RenderParams(GridMaterial[5])
@@ -508,40 +549,62 @@ public class gravity_Csharp : MonoBehaviour
         GridMaterial[5].renderQueue = 2000;
         
         GridMaterial[5].SetBuffer("GridBuff", GridBuffer5);
-        GridMaterial[5].SetFloat("ScaleFactor", 0.0625f);
+        GridMaterial[5].SetInt("Level", 5);
 
         #endregion
         // grid info to CS
-        computeShader.SetFloat("GridSideLenght", GridSideLenght);
-        computeShader.SetFloats("GridCellLenght", GridCellLenght);
-        computeShader.SetFloats("GridTotalCellCount", GridTotalCellCount);
-        computeShader.SetFloats("GridSideCellCount",  GridSideCellCount);
-        Vector4[] TMPGridPoss = new [] {new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0) };
-        computeShader.SetVectorArray("GridPossition", TMPGridPoss);
+        
+        computeShader.SetVector(     "GridSideLenght",     floatToVector4(    GridSideLenght     ));
+        computeShader.SetVectorArray("GridCellLenght",     floatArrToVector4( GridCellLenght     ));
+        computeShader.SetVectorArray("GridTotalCellCount", floatArrToVector4( GridTotalCellCount ));
+        computeShader.SetVectorArray("GridSideCellCount",  floatArrToVector4( GridSideCellCount  ));
+        //Vector4[] TMPGridPoss = new [] {new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0), new Vector4(GridstartingPoss.x, GridstartingPoss.y, 0,0) };
+        //computeShader.SetVectorArray("GridPossition", TMPGridPoss);
     }
 
     private void FixedUpdate()
     {          
         computeShader.SetFloat("fixedDeltaTime", Time.fixedDeltaTime);
         
-        
-        /*for (int i = 0; i < (float)GridTotalCellCount[0]/(float)batchSize; i++)
-        {
-            computeShader.SetInt("DispatchOffsetGrid0", i*batchSize);
-            computeShader.Dispatch(UptGrid0_kernel, (int)MathF.Min(GridTotalCellCount[0]-i*batchSize, batchSize), 1, 1);
-            //Debug.Log(i.ToString() + "  " + MathF.Min(GridTotalCellCount[0]-i*batchSize, batchSize).ToString());
-        }*/
-        
+        //Debug.Log(GridBuffer0.count);
+        //Debug.Log(GridBuffer1.count);
+        //Debug.Log(GridBuffer2.count);
+        //Debug.Log(GridBuffer3.count);
+        //Debug.Log(GridBuffer4.count);
+        //Debug.Log(GridBuffer5.count);
+
         
         if (COMPUTE_SHADER)
         {
             computeShader.Dispatch(Wipe0_kernel, (int)MathF.Ceiling(GridTotalCellCount[0]/1024), 1, 1);
+            computeShader.Dispatch(Wipe1_kernel, (int)MathF.Ceiling(GridTotalCellCount[1]/1024), 1, 1);
+            computeShader.Dispatch(Wipe2_kernel, (int)MathF.Ceiling(GridTotalCellCount[2]/1024), 1, 1);
+            computeShader.Dispatch(Wipe3_kernel, (int)MathF.Ceiling(GridTotalCellCount[3]/1024), 1, 1);
+            computeShader.Dispatch(Wipe4_kernel, (int)MathF.Ceiling(GridTotalCellCount[4]/1024), 1, 1);
+            computeShader.Dispatch(Wipe5_kernel, (int)MathF.Ceiling(GridTotalCellCount[5]/1024), 1, 1);
             
-            for (int i = 0; i < (float)dotCount/(float)batchSize; i++)
+            
+            computeShader.Dispatch(UptGrid0_kernel, (int)MathF.Ceiling(dotCount/1024), 1, 1);
+            computeShader.Dispatch(UptGrid1_kernel, (int)MathF.Ceiling(dotCount/1024), 1, 1);
+            computeShader.Dispatch(UptGrid2_kernel, (int)MathF.Ceiling(dotCount/1024), 1, 1);
+            computeShader.Dispatch(UptGrid3_kernel, (int)MathF.Ceiling(dotCount/1024), 1, 1);
+            computeShader.Dispatch(UptGrid4_kernel, (int)MathF.Ceiling(dotCount/1024), 1, 1);
+            computeShader.Dispatch(UptGrid5_kernel, (int)MathF.Ceiling(dotCount/1024), 1, 1);
+
+
+            if (Input.GetKeyDown(KeyCode.Space))
             {
-                computeShader.SetInt("DispatchOffset_UG0", i*batchSize);
-                computeShader.Dispatch(UptGrid0_kernel, (int)MathF.Min(dotCount-i*batchSize, batchSize), 1, 1);
+                Grid_str_Csharp[] results = new Grid_str_Csharp[ (int)GridTotalCellCount[1]];
+                GridBuffer0.GetData(results);
+
+                for (int i = 0; i < GridTotalCellCount[1]; i++)
+                {
+                    if (results[i].mass != 0 || results[i].position.x != 0 || results[i].position.y != 0 || results[i].MassTPossition.x != 0 || results[i].MassTPossition.y != 0) 
+                        Debug.Log(i.ToString() + ":  m:" + results[i].mass.ToString() + "  MTPx:" + results[i].MassTPossition.x.ToString() + "  MTPy:" + results[i].MassTPossition.y.ToString() + "  Px:" + results[i].position.x.ToString() + "  Py:" + results[i].position.y.ToString());
+                }
             }
+
+            
             for (int i = 0; i < (float)dotCount/(float)batchSize; i++)
             {
                 computeShader.SetInt("DispatchOffset", i*batchSize);
@@ -554,7 +617,7 @@ public class gravity_Csharp : MonoBehaviour
     private void Update()
     { 
         //computeShader.SetVector("GridTargetPosition", new Vector4(cam.transform.position.x, cam.transform.position.y, 0, 0));
-        
+        //Debug.Log(GridCellLenght[4].ToString() + "   " +  GridSideCellCount[4].ToString());
         
         
         if (!resizing)
@@ -575,27 +638,27 @@ public class gravity_Csharp : MonoBehaviour
         }
         
         // rendering The grids
-        if (RENDER_GRID == 1)
+        if (RENDER_GRID == 1 && !RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(GridMesh[0], 0, GridMaterial[0], new Bounds(Vector3.zero, Vector3.one * 100000f), Gridargsbuffer[0], layer:1, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
-        else if (RENDER_GRID == 2)
+        else if (RENDER_GRID == 2 && !RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(GridMesh[1], 0, GridMaterial[1], new Bounds(Vector3.zero, Vector3.one * 100000f), Gridargsbuffer[1], layer:1, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
-        else if (RENDER_GRID == 3)
+        else if (RENDER_GRID == 3 && !RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(GridMesh[2], 0, GridMaterial[2], new Bounds(Vector3.zero, Vector3.one * 100000f), Gridargsbuffer[2], layer:1, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
-        else if (RENDER_GRID == 4)
+        else if (RENDER_GRID == 4 && !RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(GridMesh[3], 0, GridMaterial[3], new Bounds(Vector3.zero, Vector3.one * 100000f), Gridargsbuffer[3], layer:1, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
-        else if (RENDER_GRID == 5)
+        else if (RENDER_GRID == 5 && !RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(GridMesh[4], 0, GridMaterial[4], new Bounds(Vector3.zero, Vector3.one * 100000f), Gridargsbuffer[4], layer:1, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
-        else if (RENDER_GRID == 6)
+        else if (RENDER_GRID == 6 && !RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(GridMesh[5], 0, GridMaterial[5], new Bounds(Vector3.zero, Vector3.one * 100000f), Gridargsbuffer[5], layer:1, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
@@ -827,9 +890,36 @@ public class gravity_Csharp : MonoBehaviour
         if (exc[0])
         {
             computeShader.SetBuffer(Wipe0_kernel, "Grid0", GridBuffer0);
+            computeShader.SetBuffer(Wipe1_kernel, "Grid1", GridBuffer1);
+            computeShader.SetBuffer(Wipe2_kernel, "Grid2", GridBuffer2);
+            computeShader.SetBuffer(Wipe3_kernel, "Grid3", GridBuffer3);
+            computeShader.SetBuffer(Wipe4_kernel, "Grid4", GridBuffer4);
+            computeShader.SetBuffer(Wipe5_kernel, "Grid5", GridBuffer5);
             
-            computeShader.SetBuffer(UptGrid0_kernel, "Grid0", GridBuffer0);
+            computeShader.SetBuffer(UptGrid0_kernel, "Grid0",     GridBuffer0);
             computeShader.SetBuffer(UptGrid0_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(UptGrid0_kernel, "miscData", miscellaneousBuffer);
+            
+            computeShader.SetBuffer(UptGrid1_kernel, "Grid1",     GridBuffer1);
+            computeShader.SetBuffer(UptGrid1_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(UptGrid1_kernel, "miscData", miscellaneousBuffer);
+            
+            computeShader.SetBuffer(UptGrid2_kernel, "Grid2",     GridBuffer2);
+            computeShader.SetBuffer(UptGrid2_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(UptGrid2_kernel, "miscData", miscellaneousBuffer);
+            
+            computeShader.SetBuffer(UptGrid3_kernel, "Grid3",     GridBuffer3);
+            computeShader.SetBuffer(UptGrid3_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(UptGrid3_kernel, "miscData", miscellaneousBuffer);
+            
+            computeShader.SetBuffer(UptGrid4_kernel, "Grid4",     GridBuffer4);
+            computeShader.SetBuffer(UptGrid4_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(UptGrid4_kernel, "miscData", miscellaneousBuffer);
+            
+            computeShader.SetBuffer(UptGrid5_kernel, "Grid5",     GridBuffer5);
+            computeShader.SetBuffer(UptGrid5_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(UptGrid5_kernel, "miscData", miscellaneousBuffer);
+            
             
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(dot_kernel, "miscData",  miscellaneousBuffer);
