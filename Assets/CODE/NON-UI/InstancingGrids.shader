@@ -44,6 +44,7 @@ Shader "Custom/InstancingGrids"
                 float2 position; // strating from the bottom left corner of the grid
                 int2 MassTPossition;
                 int mass;
+                int jailerID;
             
                 /*
                 Grid Sizes (6):
@@ -71,21 +72,27 @@ Shader "Custom/InstancingGrids"
                 InitIndirectDrawArgs(0);
                 v2f o;
                 
-                float sensitivity = 1;
+                float sensitivity = 10;
                 uint instanceID = GetIndirectInstanceID(svInstanceID);
                 static const uint GridSideCellLenght[6] = {2048, 1024, 512, 256, 128, 64};
-                static const float halfcelllenght[6] = {0.25,0.5,1,2,4,8};
-                static const float ScaleFactor[6] = {2,1,0.5,0.25,0.125,0.0625};
+                static const float CellLenght[6] = {0.5, 1.0, 2.0, 4.0, 8.0, 16.0};
                 static const int FloatIntScaler = 1000000; // 10^6
                 
+                float x = float(instanceID) % float(GridSideCellLenght[Level]);
+                float y = float(instanceID) / float(GridSideCellLenght[Level]);
                 
-                
-                float2 pos = float2(float(instanceID % GridSideCellLenght[Level]), float(instanceID / GridSideCellLenght[Level])) / ScaleFactor[Level] + GridBuff[instanceID].position + float2(halfcelllenght[Level], halfcelllenght[Level]);
+                float2 pos = float2(x, y) * CellLenght[Level] + float2(CellLenght[Level]/2, CellLenght[Level]/2);
+                //pos = float2(instanceID, 0) * CellLenght[Level];
                 float3 worldPos = float3(v.vertex.xy + pos,0);
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
 
-                //float4(pos.x/sensitivity, 0, pos.y/sensitivity, 1);
-                o.color = float4(float(float(GridBuff[instanceID].mass)/FloatIntScaler)/sensitivity,float(GridBuff[instanceID].mass)/FloatIntScaler/sensitivity,float(GridBuff[instanceID].mass)/FloatIntScaler/sensitivity,1);//_Color;
+                float mass01 = saturate(float(GridBuff[instanceID].mass) / FloatIntScaler);
+
+                //float4(pos.x/1024, 0, pos.y/1024, 1);    float4(float(instanceID)/4194304,0,0,1);
+                o.color = float4(mass01,
+                                 mass01,
+                                 mass01,
+                                 1);//_Color;
                 return o;
             }
 

@@ -77,16 +77,23 @@ struct trajectoryPath
     float2 position;
 };
 
+struct GridParams_str
+{
+    float GridSideLenght;
+    float GridCellLenght[6];
+    float GridTotalCellCount[6];
+    float GridSideCellCount[6];
+};
 
 // constants or variables for physics
 float G; 
-float fixedDeltaTime;
+float4 fixedDeltaTime;
 static const float PI = 3.14159265358979323846;
 static const int ThreadSize = 32;
 static const int FloatIntScaler = 1000000; // 10^6
 
 //MODES
-int COLLISION = 0;
+float4 COLLISION;
 
 //CSMAIN
 int DispatchOffset;
@@ -124,6 +131,8 @@ groupshared float mpy[32]; // Mass * Position Y
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
 RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 1   -in copy1
+
+RWStructuredBuffer<GridParams_str> GridParams; 
 
 RWStructuredBuffer<Grid_str> Grid0; // 0.5
 RWStructuredBuffer<Grid_str> Grid1; // 1
@@ -219,18 +228,24 @@ void UpdateGrid0(uint3 id : SV_DispatchThreadID){
     
     float currMass = inputData[id.x].mass;
     float2 currPoss = inputData[id.x].position;
-    
+     
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-    uint cellindex = floor(currPoss.y/GridCellLenght[0].x) * GridSideCellCount[0].x + floor(currPoss.x/GridCellLenght[0].x);
+    uint cellindex = floor(currPoss.y/GridParams[0].GridCellLenght[0]) * GridParams[0].GridSideCellCount[0] + floor(currPoss.x/GridParams[0].GridCellLenght[0]);
     
+    
+    
+    Grid0[cellindex].mass = int(10*FloatIntScaler);
+    Grid0[cellindex].position.x = floor(0.75/0.5) * 2048.0 + floor(0/0.5);;
+    Grid0[cellindex].position.y = currPoss.y;
+    Grid0[cellindex].jailerID = id.x;
     
     //since there can be only one dot in a cell, we can simplify the processe and not use atomics.
-    Grid0[cellindex].mass             = int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    Grid0[cellindex].MassTPossition.x = int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    Grid0[cellindex].MassTPossition.y = int(floor(currMass * currPoss.y * FloatIntScaler))); 
-    Grid0[cellindex].jailerID = id.x
+    //Grid0[cellindex].mass             = int(floor(currMass * FloatIntScaler)); // floor is just there as a failsafe
+    //Grid0[cellindex].MassTPossition.x = int(floor(currMass * currPoss.x * FloatIntScaler)); 
+    //Grid0[cellindex].MassTPossition.y = int(floor(currMass * currPoss.y * FloatIntScaler)); 
+    
 }
 
 [numthreads(1024, 1, 1)]
@@ -375,7 +390,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
             float2 Current_Target_Poss = inputData[Current_Target_index].position;
             // checks if its not the same obj and if its not too close
-            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y) || distance(currPoss, Current_Target_Poss) <= 1) { continue; } 
+            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y)) { continue; } // || distance(currPoss, Current_Target_Poss) <= 1
 
 
             
@@ -403,75 +418,86 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         //F=ma -> a=F/m
 
         //dont get why splitting vel calculations into 2 helps, but without it it causes extra unwanted vel
-        currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
+        currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
         
-        currPoss -= currVelo * fixedDeltaTime;
+        currPoss -= currVelo * fixedDeltaTime.x;
 
-        currVelo += (summForce / currMass) * fixedDeltaTime * 0.5;
+        currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
     }
     
     GroupMemoryBarrierWithGroupSync();
-    
+
     /*
         COLLISION DETECTION
     */
     
-    if (COLLISION == 1)
+    if (COLLISION.x == 1 && GroupIndex == 0)
     {
         
         //narrow phase
         
         uint cellID = floor(currPoss.y/GridCellLenght[0].x) * GridSideCellCount[0].x + floor(currPoss.x/GridCellLenght[0].x);
+        uint TCC = GridParams[0].GridTotalCellCount[0];
+        //possible cell IDs that dots could collide
+        uint possibleID[] = {
+            Grid0[cellID-1       ].jailerID, //left
+            Grid0[cellID+TCC-1   ].jailerID, // up-left
+            Grid0[cellID+TCC     ].jailerID, //up
+            Grid0[cellID+TCC+1   ].jailerID, // up-right
+            Grid0[cellID+1       ].jailerID, //right
+            Grid0[cellID-TCC+1   ].jailerID, // down-right
+            Grid0[cellID-TCC     ].jailerID, // down
+            Grid0[cellID-TCC-1   ].jailerID, // down-left
+            Grid0[cellID-2       ].jailerID, // 2left
+            Grid0[cellID+TCC-2   ].jailerID, // up-2left
+            Grid0[cellID+2*TCC-1 ].jailerID, // 2up-left
+            Grid0[cellID+2*TCC   ].jailerID, // 2up
+            Grid0[cellID+2*TCC+1 ].jailerID, // 2up-right
+            Grid0[cellID+TCC+2   ].jailerID, // up-2right
+            Grid0[cellID+2       ].jailerID, // 2right
+            Grid0[cellID-TCC+2   ].jailerID,  // down-2right
+            Grid0[cellID-2*TCC+1 ].jailerID, // 2down-right
+            Grid0[cellID-2*TCC   ].jailerID, // 2down
+            Grid0[cellID-2*TCC-1 ].jailerID, // 2down-left
+            Grid0[cellID-TCC-2   ].jailerID // down-2left
+        };
         
-        //check left
-        if (Grid0[cellID-1].jailerID != -1)
+        for (int id = 0; id < 20; ++id)
         {
-            uint targetID = Grid0[cellID-1].jailerID;
-            
-            //colision detected
-            if (distance(currPoss, inputData[targetID].position) <= 1)
+            if (possibleID[id] != -1)
             {
-                float2 jailerPoss = inputData[targetID].position;
-                
-                float2 normal = float2(0,0);
+                uint targetID = possibleID[id];
+            
+                //colision detectecion
+                if (distance(currPoss, inputData[targetID].position) <= 1 && targetID != DispatchGroupIndex)
+                {
+                    currColo = float3(1,0,0);
+                    
+                    float2 jailerPoss = inputData[targetID].position;
+                    float2 jailerVel = inputData[targetID].velocity;
+                    float jailerMass = inputData[targetID].mass;
+
+                    float dist = distance(jailerPoss, currPoss);
+                    
+                    float2 Normal = float2(
+                        (jailerPoss.x - currPoss.x)/dist,
+                        (jailerPoss.y - currPoss.y)/dist
+                    );
+                    
+                    float2 Tangent = float2(-Normal.y, Normal.x);
+                    
+                    float DpTan = currVelo.x * Tangent.x + currVelo.y * Tangent.y;
+                    
+                    float DpNormal1 = currVelo.x * Normal.x + currVelo.y * Normal.y;
+                    float DpNormal2 = jailerVel.x * Normal.x + jailerVel.y * Normal.y;
+                    
+                    float momentum = (DpNormal1 * (currMass - jailerMass) + 2.0 * jailerMass * DpNormal2) / (currMass + jailerMass);
+                    
+                    currVelo.x -= Tangent.x * DpTan + Normal.x * momentum;
+                    currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;
+                }
             }
         }
-        //check up-left
-        else if (Grid0[cellID+GridSideCellCount[0].x-1].jailerID != -1)
-        {
-            
-        }
-        //check up
-        else if (Grid0[cellID+GridSideCellCount[0].x].jailerID != -1)
-        {
-            
-        }
-        //check up-right
-        else if (Grid0[cellID+GridSideCellCount[0].x+1].jailerID != -1)
-        {
-            
-        }
-        //check right
-        else if (Grid0[cellID+1].jailerID != -1)
-        {
-            
-        }
-        //check down-right
-        else if (Grid0[cellID-GridSideCellCount[0].x+1].jailerID != -1)
-        {
-            
-        }
-        //check down
-        else if (Grid0[cellID-GridSideCellCount[0].x].jailerID != -1)
-        {
-            
-        }
-        //check down-left
-        else if (Grid0[cellID-GridSideCellCount[0].x-1].jailerID != -1)
-        {
-            
-        }
-        
         
     }
     
@@ -718,11 +744,11 @@ void CalcTrajectory(int GroupIndex : SV_GroupIndex)
             //F=ma -> a=F/m
 
             //dont get why splitting vel calculations into 2 helps, but without it it causes extra unwanted vel
-            currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime * 0.5 * Resolution; //(1/Resolution)
+            currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime.x * 0.5 * Resolution; //(1/Resolution)
         
-            currPoss -= currVelo * fixedDeltaTime * Resolution;
+            currPoss -= currVelo * fixedDeltaTime.x * Resolution;
 
-            currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime * 0.5 * Resolution;
+            currVelo += (summForce / changeDots[0].changeDataMass) * fixedDeltaTime.x * 0.5 * Resolution;
             
             trajPath[index].position = currPoss;
             index++;
