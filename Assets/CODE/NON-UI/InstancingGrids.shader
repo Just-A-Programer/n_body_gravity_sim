@@ -7,7 +7,7 @@ Shader "Custom/InstancingGrids"
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
         _RENDER_GRID_MODE ("RENDER GRID MODE", int) = 0
-
+        _select ("_select", int) = 0
         /*
         RENDER MODE:
         0: no render
@@ -38,7 +38,7 @@ Shader "Custom/InstancingGrids"
 
             float4      _Color;
             sampler2D   _MainTex;
-            
+            int _select;
             struct Grid_str_ins
             {
                 float2 position; // strating from the bottom left corner of the grid
@@ -85,8 +85,10 @@ Shader "Custom/InstancingGrids"
                 //pos = float2(instanceID, 0) * CellLenght[Level];
                 float3 worldPos = float3(v.vertex.xy + pos,0);
                 o.pos = mul(UNITY_MATRIX_VP, float4(worldPos, 1));
-
-                float mass01 = saturate(float(GridBuff[instanceID].mass) / FloatIntScaler);
+                
+                float mass01 = 0;
+                if (GridBuff[instanceID].jailerID != -1)
+                    mass01 = 10;//saturate(float(GridBuff[instanceID].mass) / FloatIntScaler); //
 
                 //float4(pos.x/1024, 0, pos.y/1024, 1);    float4(float(instanceID)/4194304,0,0,1);
                 o.color = float4(mass01,

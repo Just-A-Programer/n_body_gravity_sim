@@ -390,7 +390,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
             float2 Current_Target_Poss = inputData[Current_Target_index].position;
             // checks if its not the same obj and if its not too close
-            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y)) { continue; } // || distance(currPoss, Current_Target_Poss) <= 1
+            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y) || distance(currPoss, Current_Target_Poss) <= 1) { continue; } // 
 
 
             
@@ -437,6 +437,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         //narrow phase
         
         uint cellID = floor(currPoss.y/GridCellLenght[0].x) * GridSideCellCount[0].x + floor(currPoss.x/GridCellLenght[0].x);
+        Grid0[cellID].MassTPossition = 100;
         uint TCC = GridParams[0].GridTotalCellCount[0];
         //possible cell IDs that dots could collide
         uint possibleID[] = {
@@ -455,25 +456,24 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             Grid0[cellID+2*TCC+1 ].jailerID, // 2up-right
             Grid0[cellID+TCC+2   ].jailerID, // up-2right
             Grid0[cellID+2       ].jailerID, // 2right
-            Grid0[cellID-TCC+2   ].jailerID,  // down-2right
+            Grid0[cellID-TCC+2   ].jailerID, // down-2right
             Grid0[cellID-2*TCC+1 ].jailerID, // 2down-right
             Grid0[cellID-2*TCC   ].jailerID, // 2down
             Grid0[cellID-2*TCC-1 ].jailerID, // 2down-left
-            Grid0[cellID-TCC-2   ].jailerID // down-2left
+            Grid0[cellID-TCC-2   ].jailerID  // down-2left
         };
-        
-        for (int id = 0; id < 20; ++id)
+        for (int idx = 0; idx < ; ++id)
         {
             if (possibleID[id] != -1)
             {
                 uint targetID = possibleID[id];
             
                 //colision detectecion
-                if (distance(currPoss, inputData[targetID].position) <= 1 && targetID != DispatchGroupIndex)
+                if (distance(currPoss, inputData[possibleID[id]].position) <= 1 && targetID != DispatchGroupIndex)
                 {
                     currColo = float3(1,0,0);
                     
-                    float2 jailerPoss = inputData[targetID].position;
+                    /*float2 jailerPoss = inputData[targetID].position;
                     float2 jailerVel = inputData[targetID].velocity;
                     float jailerMass = inputData[targetID].mass;
 
@@ -494,10 +494,58 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
                     float momentum = (DpNormal1 * (currMass - jailerMass) + 2.0 * jailerMass * DpNormal2) / (currMass + jailerMass);
                     
                     currVelo.x -= Tangent.x * DpTan + Normal.x * momentum;
-                    currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;
+                    currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;*/
+                    /*currVelo.x = -currVelo.x;
+                    currVelo.y = -currVelo.y;*/
+                }
+                else
+                {
+                    currColo = float3(1,1,1);
                 }
             }
-        }
+        
+        /*for (int id = 0; id < 19; ++id)
+        {
+            if (possibleID[id] != -1)
+            {
+                uint targetID = possibleID[id];
+            
+                //colision detectecion
+                if (distance(currPoss, inputData[possibleID[id]].position) <= 1 && targetID != DispatchGroupIndex)
+                {
+                    currColo = float3(1,0,0);
+                    
+                    /*float2 jailerPoss = inputData[targetID].position;
+                    float2 jailerVel = inputData[targetID].velocity;
+                    float jailerMass = inputData[targetID].mass;
+
+                    float dist = distance(jailerPoss, currPoss);
+                    
+                    float2 Normal = float2(
+                        (jailerPoss.x - currPoss.x)/dist,
+                        (jailerPoss.y - currPoss.y)/dist
+                    );
+                    
+                    float2 Tangent = float2(-Normal.y, Normal.x);
+                    
+                    float DpTan = currVelo.x * Tangent.x + currVelo.y * Tangent.y;
+                    
+                    float DpNormal1 = currVelo.x * Normal.x + currVelo.y * Normal.y;
+                    float DpNormal2 = jailerVel.x * Normal.x + jailerVel.y * Normal.y;
+                    
+                    float momentum = (DpNormal1 * (currMass - jailerMass) + 2.0 * jailerMass * DpNormal2) / (currMass + jailerMass);
+                    
+                    currVelo.x -= Tangent.x * DpTan + Normal.x * momentum;
+                    currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;*/
+                    /*currVelo.x = -currVelo.x;
+                    currVelo.y = -currVelo.y;
+                }
+                else
+                {
+                    currColo = float3(1,1,1);
+                }
+            }
+        }*/
         
     }
     
