@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using UnityEngine.UIElements;
+using Image = UnityEngine.UI.Image;
 
 public class UI_Handler : MonoBehaviour
 {
@@ -42,9 +44,9 @@ public class UI_Handler : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Mouse1))
         {
-            Debug.Log("clear");
             for (int i = 0; i < SC_Button_Arr.Length; i++)
             {
+                //SC_Button_Arr[i].GetComponent<Image>().color = Color.white;
                 SC_Button_Arr[i].SetActive(false);
             }
         }
@@ -54,9 +56,10 @@ public class UI_Handler : MonoBehaviour
     {
         for (int i = 0; i < SC_Button_Arr.Length; i++)
         {
+            //SC_Button_Arr[i].GetComponent<Image>().color = Color.white;
             SC_Button_Arr[i].SetActive(false);
         }
-        
+        //SC_Button_Arr[id].GetComponent<Image>().color = Color.green;
         SC_Button_Arr[id].SetActive(true);
     }
 }

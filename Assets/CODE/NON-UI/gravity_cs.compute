@@ -79,10 +79,8 @@ struct trajectoryPath
 
 struct GridParams_str
 {
-    float GridSideLenght;
     float GridCellLenght[6];
     float GridTotalCellCount[6];
-    float GridSideCellCount[6];
 };
 
 // constants or variables for physics
@@ -112,12 +110,6 @@ groupshared float2 calcForceTraj[ThreadSize];
 
 
 //Grid kernel
-bool IsThisFristFrame = true;
-float4 GridTargetPosition;
-float4 GridSideLenght;
-float4 GridCellLenght[6];
-float4 GridTotalCellCount[6];
-float4 GridSideCellCount[6];
 float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
 
 //Grid update kernel
@@ -154,66 +146,66 @@ groupshared float2 calcForce[ThreadSize];
 [numthreads(1024, 1, 1)]
 void WipeGrid0(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= GridTotalCellCount[0].x) { return; }
+    if (id.x >= GridParams[0].GridTotalCellCount[0].x) { return; }
     
     Grid0[id.x].mass = 0;
     Grid0[id.x].MassTPossition = 0;
-    Grid0[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+    Grid0[id.x].position = float2(0, 0);
     Grid0[id.x].jailerID = -1;
 }
 
 [numthreads(1024, 1, 1)]
 void WipeGrid1(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= GridTotalCellCount[1].x) { return; }
+    if (id.x >= GridParams[0].GridTotalCellCount[1].x) { return; }
     
     Grid1[id.x].mass = 0;
     Grid1[id.x].MassTPossition = 0;
-    Grid1[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+    Grid1[id.x].position = float2(0, 0);
     Grid1[id.x].jailerID = -1;
 }
 
 [numthreads(1024, 1, 1)]
 void WipeGrid2(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= GridTotalCellCount[2].x) { return; }
+    if (id.x >= GridParams[0].GridTotalCellCount[2].x) { return; }
     
     Grid2[id.x].mass = 0;
     Grid2[id.x].MassTPossition = 0;
-    Grid2[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+    Grid2[id.x].position = float2(0, 0);
     Grid2[id.x].jailerID = -1;
 }
 
 [numthreads(1024, 1, 1)]
 void WipeGrid3(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= GridTotalCellCount[3].x) { return; }
+    if (id.x >= GridParams[0].GridTotalCellCount[3].x) { return; }
     
     Grid3[id.x].mass = 0;
     Grid3[id.x].MassTPossition = 0;
-    Grid3[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+    Grid3[id.x].position = float2(0, 0);
     Grid3[id.x].jailerID = -1;
 }
 
 [numthreads(1024, 1, 1)]
 void WipeGrid4(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= GridTotalCellCount[4].x) { return; }
+    if (id.x >= GridParams[0].GridTotalCellCount[4].x) { return; }
     
     Grid4[id.x].mass = 0;
     Grid4[id.x].MassTPossition = 0;
-    Grid4[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+    Grid4[id.x].position = float2(0, 0);
     Grid4[id.x].jailerID = -1;
 }
 
 [numthreads(1024, 1, 1)]
 void WipeGrid5(uint3 id : SV_DispatchThreadID)
 {
-    if (id.x >= GridTotalCellCount[5].x) { return; }
+    if (id.x >= GridParams[0].GridTotalCellCount[5].x) { return; }
     
     Grid5[id.x].mass = 0;
     Grid5[id.x].MassTPossition = 0;
-    Grid5[id.x].position = float2(GridTargetPosition.x, GridTargetPosition.y);
+    Grid5[id.x].position = float2(0, 0);
     Grid5[id.x].jailerID = -1;
 }
 
@@ -223,7 +215,7 @@ void WipeGrid5(uint3 id : SV_DispatchThreadID)
 [numthreads(1024, 1, 1)]
 void UpdateGrid0(uint3 id : SV_DispatchThreadID){
     
-    if (id.x >= miscData[0].dotCount)
+    /*if (id.x >= miscData[0].dotCount)
         return;
     
     float currMass = inputData[id.x].mass;
@@ -232,26 +224,22 @@ void UpdateGrid0(uint3 id : SV_DispatchThreadID){
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-    uint cellindex = floor(currPoss.y/GridParams[0].GridCellLenght[0]) * GridParams[0].GridSideCellCount[0] + floor(currPoss.x/GridParams[0].GridCellLenght[0]);
     
-    
-    
-    Grid0[cellindex].mass = int(10*FloatIntScaler);
-    Grid0[cellindex].position.x = floor(0.75/0.5) * 2048.0 + floor(0/0.5);;
-    Grid0[cellindex].position.y = currPoss.y;
-    Grid0[cellindex].jailerID = id.x;
+    Grid0[id.x].mass = int(floor(currMass * FloatIntScaler));
+    Grid0[id.x].position.x = floor(currPoss.x/GridParams[0].GridCellLenght[0])*GridParams[0].GridCellLenght[0];
+    Grid0[id.x].position.y = floor(currPoss.y/GridParams[0].GridCellLenght[0])*GridParams[0].GridCellLenght[0];
+    Grid0[id.x].jailerID = id.x;
     
     //since there can be only one dot in a cell, we can simplify the processe and not use atomics.
-    //Grid0[cellindex].mass             = int(floor(currMass * FloatIntScaler)); // floor is just there as a failsafe
-    //Grid0[cellindex].MassTPossition.x = int(floor(currMass * currPoss.x * FloatIntScaler)); 
-    //Grid0[cellindex].MassTPossition.y = int(floor(currMass * currPoss.y * FloatIntScaler)); 
+    Grid0[id.x].MassTPossition.x = int(floor(currMass * currPoss.x * FloatIntScaler)); 
+    Grid0[id.x].MassTPossition.y = int(floor(currMass * currPoss.y * FloatIntScaler)); */
     
 }
 
 [numthreads(1024, 1, 1)]
 void UpdateGrid1(uint3 id : SV_DispatchThreadID){
     
-    if (id.x >= miscData[0].dotCount)
+    /*if (id.x >= miscData[0].dotCount)
         return;
     
     float currMass = inputData[id.x].mass;
@@ -260,20 +248,27 @@ void UpdateGrid1(uint3 id : SV_DispatchThreadID){
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-
-    //uint cellindex = (floor(currPoss.y/GridCellLenght[1]) * (1024.0/GridCellLenght[1])) + floor(currPoss.x/GridCellLenght[1]);
-
-    uint cellindex = floor(currPoss.y/GridCellLenght[1].x) * GridSideCellCount[1].x + floor(currPoss.x/GridCellLenght[1].x);
     
-    InterlockedAdd(Grid1[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid1[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid1[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
+    for (int id = 0 ; id < GridParams[0].GridTotalCellCount[1] ; id++)
+    {
+        if (floor(currPoss.x/GridParams[0].GridCellLenght[1])*GridParams[0].GridCellLenght[1] == Grid1[id].position.x)
+        {
+            if (floor(currPoss.y/GridParams[0].GridCellLenght[1])*GridParams[0].GridCellLenght[1] == Grid1[id].position.y)
+            {
+                InterlockedAdd(Grid1[id.x].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+                InterlockedAdd(Grid1[id.x].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+                InterlockedAdd(Grid1[id.x].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
+            }
+        }
+    }*/
+    
+    
 }
 
 [numthreads(1024, 1, 1)]
 void UpdateGrid2(uint3 id : SV_DispatchThreadID){
     
-    if (id.x >= miscData[0].dotCount)
+    /*if (id.x >= miscData[0].dotCount)
         return;
     
     float currMass = inputData[id.x].mass;
@@ -282,17 +277,16 @@ void UpdateGrid2(uint3 id : SV_DispatchThreadID){
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-    uint cellindex = floor(currPoss.y/GridCellLenght[2].x) * GridSideCellCount[2].x + floor(currPoss.x/GridCellLenght[2].x);
     
-    InterlockedAdd(Grid2[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid2[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler)));
-    InterlockedAdd(Grid2[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
+    InterlockedAdd(Grid2[id.x].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid2[id.x].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler)));
+    InterlockedAdd(Grid2[id.x].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
 }
 
 [numthreads(1024, 1, 1)]
 void UpdateGrid3(uint3 id : SV_DispatchThreadID){
     
-    if (id.x >= miscData[0].dotCount)
+    /*if (id.x >= miscData[0].dotCount)
         return;
     
     float currMass = inputData[id.x].mass;
@@ -301,17 +295,16 @@ void UpdateGrid3(uint3 id : SV_DispatchThreadID){
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-    uint cellindex = floor(currPoss.y/GridCellLenght[3].x) * GridSideCellCount[3].x + floor(currPoss.x/GridCellLenght[3].x);
     
-    InterlockedAdd(Grid3[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid3[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid3[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
+    InterlockedAdd(Grid3[id.x].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
+    InterlockedAdd(Grid3[id.x].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
+    InterlockedAdd(Grid3[id.x].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
 }
 
 [numthreads(1024, 1, 1)]
 void UpdateGrid4(uint3 id : SV_DispatchThreadID){
     
-    if (id.x >= miscData[0].dotCount)
+    /*if (id.x >= miscData[0].dotCount)
         return;
     
     float currMass = inputData[id.x].mass;
@@ -320,17 +313,16 @@ void UpdateGrid4(uint3 id : SV_DispatchThreadID){
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-    uint cellindex = floor(currPoss.y/GridCellLenght[4].x) * GridSideCellCount[4].x + floor(currPoss.x/GridCellLenght[4].x);
     
     InterlockedAdd(Grid4[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
     InterlockedAdd(Grid4[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid4[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
+    InterlockedAdd(Grid4[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
 }
 
 [numthreads(1024, 1, 1)]
 void UpdateGrid5(uint3 id : SV_DispatchThreadID){
     
-    if (id.x >= miscData[0].dotCount)
+    /*if (id.x >= miscData[0].dotCount)
         return;
     
     float currMass = inputData[id.x].mass;
@@ -339,11 +331,10 @@ void UpdateGrid5(uint3 id : SV_DispatchThreadID){
     if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
         return;
     
-    uint cellindex = floor(currPoss.y/GridCellLenght[5].x) * GridSideCellCount[5].x + floor(currPoss.x/GridCellLenght[5].x);
     
     InterlockedAdd(Grid5[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
     InterlockedAdd(Grid5[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid5[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
+    InterlockedAdd(Grid5[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
 }
 
 
@@ -434,77 +425,38 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     if (COLLISION.x == 1 && GroupIndex == 0)
     {
         
-        //narrow phase
-        
-        uint cellID = floor(currPoss.y/GridCellLenght[0].x) * GridSideCellCount[0].x + floor(currPoss.x/GridCellLenght[0].x);
-        Grid0[cellID].MassTPossition = 100;
-        uint TCC = GridParams[0].GridTotalCellCount[0];
-        //possible cell IDs that dots could collide
-        uint possibleID[] = {
-            Grid0[cellID-1       ].jailerID, //left
-            Grid0[cellID+TCC-1   ].jailerID, // up-left
-            Grid0[cellID+TCC     ].jailerID, //up
-            Grid0[cellID+TCC+1   ].jailerID, // up-right
-            Grid0[cellID+1       ].jailerID, //right
-            Grid0[cellID-TCC+1   ].jailerID, // down-right
-            Grid0[cellID-TCC     ].jailerID, // down
-            Grid0[cellID-TCC-1   ].jailerID, // down-left
-            Grid0[cellID-2       ].jailerID, // 2left
-            Grid0[cellID+TCC-2   ].jailerID, // up-2left
-            Grid0[cellID+2*TCC-1 ].jailerID, // 2up-left
-            Grid0[cellID+2*TCC   ].jailerID, // 2up
-            Grid0[cellID+2*TCC+1 ].jailerID, // 2up-right
-            Grid0[cellID+TCC+2   ].jailerID, // up-2right
-            Grid0[cellID+2       ].jailerID, // 2right
-            Grid0[cellID-TCC+2   ].jailerID, // down-2right
-            Grid0[cellID-2*TCC+1 ].jailerID, // 2down-right
-            Grid0[cellID-2*TCC   ].jailerID, // 2down
-            Grid0[cellID-2*TCC-1 ].jailerID, // 2down-left
-            Grid0[cellID-TCC-2   ].jailerID  // down-2left
-        };
 
-        for (int id = 0; id < 19; ++id)
+        /*//colision detectecion
+        if (distance(currPoss, inputData[6969].position) <= 1 && targetID != DispatchGroupIndex)
         {
-            if (possibleID[id] != -1)
-            {
-                uint targetID = possibleID[id];
-            
-                //colision detectecion
-                if (distance(currPoss, inputData[possibleID[id]].position) <= 1 && targetID != DispatchGroupIndex)
-                {
-                    currColo = float3(1,0,0);
+            currColo = float3(1,0,0);
                     
-                    /*float2 jailerPoss = inputData[targetID].position;
-                    float2 jailerVel = inputData[targetID].velocity;
-                    float jailerMass = inputData[targetID].mass;
+            /*float2 jailerPoss = inputData[targetID].position;
+            float2 jailerVel = inputData[targetID].velocity;
+            float jailerMass = inputData[targetID].mass;
 
-                    float dist = distance(jailerPoss, currPoss);
+            float dist = distance(jailerPoss, currPoss);
                     
-                    float2 Normal = float2(
-                        (jailerPoss.x - currPoss.x)/dist,
-                        (jailerPoss.y - currPoss.y)/dist
-                    );
+            float2 Normal = float2(
+                (jailerPoss.x - currPoss.x)/dist,
+                (jailerPoss.y - currPoss.y)/dist
+            );
                     
-                    float2 Tangent = float2(-Normal.y, Normal.x);
+            float2 Tangent = float2(-Normal.y, Normal.x);
                     
-                    float DpTan = currVelo.x * Tangent.x + currVelo.y * Tangent.y;
+            float DpTan = currVelo.x * Tangent.x + currVelo.y * Tangent.y;
                     
-                    float DpNormal1 = currVelo.x * Normal.x + currVelo.y * Normal.y;
-                    float DpNormal2 = jailerVel.x * Normal.x + jailerVel.y * Normal.y;
+            float DpNormal1 = currVelo.x * Normal.x + currVelo.y * Normal.y;
+            float DpNormal2 = jailerVel.x * Normal.x + jailerVel.y * Normal.y;
                     
-                    float momentum = (DpNormal1 * (currMass - jailerMass) + 2.0 * jailerMass * DpNormal2) / (currMass + jailerMass);
+            float momentum = (DpNormal1 * (currMass - jailerMass) + 2.0 * jailerMass * DpNormal2) / (currMass + jailerMass);
                     
-                    currVelo.x -= Tangent.x * DpTan + Normal.x * momentum;
-                    currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;*/
-                    /*currVelo.x = -currVelo.x;
-                    currVelo.y = -currVelo.y;*/
-                }
-                else
-                {
-                    currColo = float3(1,1,1);
-                }
-            }
-        }
+            currVelo.x -= Tangent.x * DpTan + Normal.x * momentum;
+            currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;*/
+            /*currVelo.x = -currVelo.x;
+            currVelo.y = -currVelo.y;
+            
+        }*/
         
     }
     
