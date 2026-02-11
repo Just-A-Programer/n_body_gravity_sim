@@ -18,6 +18,6 @@ public class fastforward : MonoBehaviour
             TimeScale--;
             Time.timeScale = TimeScale;
         }
-        text.text = "TimeScale: " + TimeScale;
+        text.text = "Laiko greitis: " + TimeScale;
     }
 }

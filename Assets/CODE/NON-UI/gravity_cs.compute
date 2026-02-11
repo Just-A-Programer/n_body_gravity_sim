@@ -337,7 +337,10 @@ void UpdateGrid5(uint3 id : SV_DispatchThreadID){
     InterlockedAdd(Grid5[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
 }
 
-
+float vectorMag(float2 vec)
+{
+    return sqrt(vec.x*vec.x + vec.y*vec.y);
+}
 
 
 [numthreads(4, 4, 2)]
@@ -345,6 +348,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
     uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset; //index of the current group
     
+    float c = -0.9;
     int currMass = inputData[DispatchGroupIndex].mass;
     float2 currPoss = inputData[DispatchGroupIndex].position;
     float2 currVelo = inputData[DispatchGroupIndex].velocity;
@@ -360,7 +364,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     int Start_cord = 0;
     int End_cord = 0;
     
-    
+    //currColo = float3(1,1,1);
     // calculate everybodies forces
     if (DispatchGroupIndex <= dotCount && currMass != 0)
     {
@@ -381,8 +385,35 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
             float2 Current_Target_Poss = inputData[Current_Target_index].position;
             // checks if its not the same obj and if its not too close
-            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y) || distance(currPoss, Current_Target_Poss) <= 1) { continue; } // 
-
+            if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y)) { continue; }
+            
+            if (distance(currPoss, Current_Target_Poss) <= 1)
+            {
+                continue;
+                currColo = float3(1,0,0);
+                    
+                float2 jailerPoss = inputData[Current_Target_index].position;
+                float2 jailerVel = inputData[Current_Target_index].velocity;
+                float jailerMass = inputData[Current_Target_index].mass;
+                
+                float2 Normal = float2( 
+                    (jailerPoss.x - currPoss.x)/distance(currPoss, jailerPoss), 
+                    (jailerPoss.y - currPoss.y)/distance(currPoss, jailerPoss)
+                );
+                
+                currVelo = currVelo - ((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( vectorMag(currPoss - jailerPoss), 2))) * (currPoss - jailerPoss); //+ (0.1 * Normal * (1 - pow(distance(currPoss, jailerPoss), -1)));
+                
+                
+                
+                float vn = dot(currVelo, Normal);
+                
+                /*if (vn < 0)
+                    currVelo -= vn * Normal;*/
+                /*float j = ((currMass*jailerMass) / (currMass + jailerMass)) * (1 + c) * (jailerVel - currVelo) * Normal;
+                currVelo = (j/currMass)*Normal;*/
+                
+                continue;
+            }
 
             
             float F = G * ((currMass * Current_Target_Mass) / pow(distance(currPoss, Current_Target_Poss), 2.0)); // (pow(currPoss.x - Current_Target_Poss.x, 2) + pow(currPoss.y - Current_Target_Poss.y, 2))); 
@@ -414,6 +445,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         currPoss -= currVelo * fixedDeltaTime.x;
 
         currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
+
     }
     
     GroupMemoryBarrierWithGroupSync();
