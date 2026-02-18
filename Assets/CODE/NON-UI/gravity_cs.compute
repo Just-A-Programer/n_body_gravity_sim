@@ -1,16 +1,4 @@
 #pragma kernel CSMain
-#pragma kernel WipeGrid0
-#pragma kernel WipeGrid1
-#pragma kernel WipeGrid2
-#pragma kernel WipeGrid3
-#pragma kernel WipeGrid4
-#pragma kernel WipeGrid5
-#pragma kernel UpdateGrid0
-#pragma kernel UpdateGrid1
-#pragma kernel UpdateGrid2
-#pragma kernel UpdateGrid3
-#pragma kernel UpdateGrid4
-#pragma kernel UpdateGrid5
 #pragma kernel AddorRemoveDots
 #pragma kernel CopyBuffer
 #pragma kernel CalcTrajectory
@@ -43,29 +31,6 @@ struct changeDotsStr
     */
 };
 
-
-struct Grid_str
-{
-    float2 position; // strating from the bottom left corner of the grid
-    int2 MassTPossition;
-    int mass;
-    int jailerID;
-    // jailerID is only used in GRID0 since there can be only one dot
-    // in a cell. jailerID refereses this dot (or jailer) via his ID.
-    // 
-    
-    /*
-    Grid Sizes (6):
-    0: 0.5x0.5
-    1: 1x1     (x2)
-    2: 2x2     (x2)
-    3: 4x4     (x2)
-    4: 8x8     (x2)
-    5: 16x16   (x2)
-    */
-
-};
-
 struct miscellaneousData
 {
     int dotCount;
@@ -77,11 +42,6 @@ struct trajectoryPath
     float2 position;
 };
 
-struct GridParams_str
-{
-    float GridCellLenght[6];
-    float GridTotalCellCount[6];
-};
 
 // constants or variables for physics
 float G; 
@@ -109,29 +69,10 @@ float2 CenterBallPoss;
 groupshared float2 calcForceTraj[ThreadSize];
 
 
-//Grid kernel
-float ActivationDistace[6] = {0, 8, 16, 32, 64, 128};
-
-//Grid update kernel
-groupshared float2 cellcenterofmass = 0;
-groupshared float cellmass[32];
-groupshared int cellcount[32];
-groupshared float mpx[32]; // Mass * Position X
-groupshared float mpy[32]; // Mass * Position Y
-
-
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
 RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 1   -in copy1
 
-RWStructuredBuffer<GridParams_str> GridParams; 
-
-RWStructuredBuffer<Grid_str> Grid0; // 0.5
-RWStructuredBuffer<Grid_str> Grid1; // 1
-RWStructuredBuffer<Grid_str> Grid2; // 2
-RWStructuredBuffer<Grid_str> Grid3; // 4
-RWStructuredBuffer<Grid_str> Grid4; // 8
-RWStructuredBuffer<Grid_str> Grid5; // 16
 
 RWStructuredBuffer<changeDotsStr> changeDots;
 RWStructuredBuffer<miscellaneousData> miscData;
@@ -141,201 +82,6 @@ RWStructuredBuffer<trajectoryPath> trajPath;
 groupshared float2 calcForce[ThreadSize];
 
 
-
-
-[numthreads(1024, 1, 1)]
-void WipeGrid0(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= GridParams[0].GridTotalCellCount[0].x) { return; }
-    
-    Grid0[id.x].mass = 0;
-    Grid0[id.x].MassTPossition = 0;
-    Grid0[id.x].position = float2(0, 0);
-    Grid0[id.x].jailerID = -1;
-}
-
-[numthreads(1024, 1, 1)]
-void WipeGrid1(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= GridParams[0].GridTotalCellCount[1].x) { return; }
-    
-    Grid1[id.x].mass = 0;
-    Grid1[id.x].MassTPossition = 0;
-    Grid1[id.x].position = float2(0, 0);
-    Grid1[id.x].jailerID = -1;
-}
-
-[numthreads(1024, 1, 1)]
-void WipeGrid2(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= GridParams[0].GridTotalCellCount[2].x) { return; }
-    
-    Grid2[id.x].mass = 0;
-    Grid2[id.x].MassTPossition = 0;
-    Grid2[id.x].position = float2(0, 0);
-    Grid2[id.x].jailerID = -1;
-}
-
-[numthreads(1024, 1, 1)]
-void WipeGrid3(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= GridParams[0].GridTotalCellCount[3].x) { return; }
-    
-    Grid3[id.x].mass = 0;
-    Grid3[id.x].MassTPossition = 0;
-    Grid3[id.x].position = float2(0, 0);
-    Grid3[id.x].jailerID = -1;
-}
-
-[numthreads(1024, 1, 1)]
-void WipeGrid4(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= GridParams[0].GridTotalCellCount[4].x) { return; }
-    
-    Grid4[id.x].mass = 0;
-    Grid4[id.x].MassTPossition = 0;
-    Grid4[id.x].position = float2(0, 0);
-    Grid4[id.x].jailerID = -1;
-}
-
-[numthreads(1024, 1, 1)]
-void WipeGrid5(uint3 id : SV_DispatchThreadID)
-{
-    if (id.x >= GridParams[0].GridTotalCellCount[5].x) { return; }
-    
-    Grid5[id.x].mass = 0;
-    Grid5[id.x].MassTPossition = 0;
-    Grid5[id.x].position = float2(0, 0);
-    Grid5[id.x].jailerID = -1;
-}
-
-
-
-
-[numthreads(1024, 1, 1)]
-void UpdateGrid0(uint3 id : SV_DispatchThreadID){
-    
-    /*if (id.x >= miscData[0].dotCount)
-        return;
-    
-    float currMass = inputData[id.x].mass;
-    float2 currPoss = inputData[id.x].position;
-     
-    if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
-        return;
-    
-    
-    Grid0[id.x].mass = int(floor(currMass * FloatIntScaler));
-    Grid0[id.x].position.x = floor(currPoss.x/GridParams[0].GridCellLenght[0])*GridParams[0].GridCellLenght[0];
-    Grid0[id.x].position.y = floor(currPoss.y/GridParams[0].GridCellLenght[0])*GridParams[0].GridCellLenght[0];
-    Grid0[id.x].jailerID = id.x;
-    
-    //since there can be only one dot in a cell, we can simplify the processe and not use atomics.
-    Grid0[id.x].MassTPossition.x = int(floor(currMass * currPoss.x * FloatIntScaler)); 
-    Grid0[id.x].MassTPossition.y = int(floor(currMass * currPoss.y * FloatIntScaler)); */
-    
-}
-
-[numthreads(1024, 1, 1)]
-void UpdateGrid1(uint3 id : SV_DispatchThreadID){
-    
-    /*if (id.x >= miscData[0].dotCount)
-        return;
-    
-    float currMass = inputData[id.x].mass;
-    float2 currPoss = inputData[id.x].position;
-    
-    if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
-        return;
-    
-    
-    for (int id = 0 ; id < GridParams[0].GridTotalCellCount[1] ; id++)
-    {
-        if (floor(currPoss.x/GridParams[0].GridCellLenght[1])*GridParams[0].GridCellLenght[1] == Grid1[id].position.x)
-        {
-            if (floor(currPoss.y/GridParams[0].GridCellLenght[1])*GridParams[0].GridCellLenght[1] == Grid1[id].position.y)
-            {
-                InterlockedAdd(Grid1[id.x].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-                InterlockedAdd(Grid1[id.x].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-                InterlockedAdd(Grid1[id.x].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); 
-            }
-        }
-    }*/
-    
-    
-}
-
-[numthreads(1024, 1, 1)]
-void UpdateGrid2(uint3 id : SV_DispatchThreadID){
-    
-    /*if (id.x >= miscData[0].dotCount)
-        return;
-    
-    float currMass = inputData[id.x].mass;
-    float2 currPoss = inputData[id.x].position;
-    
-    if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
-        return;
-    
-    
-    InterlockedAdd(Grid2[id.x].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid2[id.x].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler)));
-    InterlockedAdd(Grid2[id.x].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
-}
-
-[numthreads(1024, 1, 1)]
-void UpdateGrid3(uint3 id : SV_DispatchThreadID){
-    
-    /*if (id.x >= miscData[0].dotCount)
-        return;
-    
-    float currMass = inputData[id.x].mass;
-    float2 currPoss = inputData[id.x].position;
-    
-    if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
-        return;
-    
-    
-    InterlockedAdd(Grid3[id.x].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid3[id.x].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid3[id.x].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
-}
-
-[numthreads(1024, 1, 1)]
-void UpdateGrid4(uint3 id : SV_DispatchThreadID){
-    
-    /*if (id.x >= miscData[0].dotCount)
-        return;
-    
-    float currMass = inputData[id.x].mass;
-    float2 currPoss = inputData[id.x].position;
-    
-    if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
-        return;
-    
-    
-    InterlockedAdd(Grid4[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid4[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid4[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
-}
-
-[numthreads(1024, 1, 1)]
-void UpdateGrid5(uint3 id : SV_DispatchThreadID){
-    
-    /*if (id.x >= miscData[0].dotCount)
-        return;
-    
-    float currMass = inputData[id.x].mass;
-    float2 currPoss = inputData[id.x].position;
-    
-    if ((currMass == 0) || !(currPoss.x >= GridTargetPosition.x && currPoss.y >= GridTargetPosition.y && currPoss.x < GridTargetPosition.x + GridSideLenght.x && currPoss.y < GridTargetPosition.y + GridSideLenght.x))
-        return;
-    
-    
-    InterlockedAdd(Grid5[cellindex].mass,             int(floor(currMass * FloatIntScaler))); // floor is just there as a failsafe
-    InterlockedAdd(Grid5[cellindex].MassTPossition.x, int(floor(currMass * currPoss.x * FloatIntScaler))); 
-    InterlockedAdd(Grid5[cellindex].MassTPossition.y, int(floor(currMass * currPoss.y * FloatIntScaler))); */
-}
 
 float vectorMag(float2 vec)
 {
@@ -648,7 +394,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
 
 
 
-//from inputdata, Grid0 to Grid2_TMP
+//from inputdata
 [numthreads(64, 1, 1)]
 void CopyBuffer(uint GroupIndex : SV_GroupIndex){
 
