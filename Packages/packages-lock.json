@@ -8,6 +8,13 @@
         "com.unity.editorcoroutines": "1.0.0"
       }
     },
+    "com.consulo.ide": {
+      "version": "https://github.com/consulo/UnityEditorConsuloPlugin.git#2.6.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "b25393f154e74a09bc78068fb0a7636976f37a49"
+    },
     "com.unity.2d.animation": {
       "version": "12.0.2",
       "depth": 1,

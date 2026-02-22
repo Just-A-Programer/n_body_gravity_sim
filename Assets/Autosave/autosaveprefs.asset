@@ -11,8 +11,8 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e968f9e3764d1274bb70a6060d511138, type: 3}
   m_Name: autosaveprefs
-  m_EditorClassIdentifier: 
-  enable: 1
-  log: 1
+  m_EditorClassIdentifier: com.aniruddhahar.unity-autosave.editor::AutosavePrefs
+  enable: 0
+  log: 0
   onPlay: 0
   interval: 10

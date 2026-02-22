@@ -168,7 +168,7 @@ public class gravity_Csharp : MonoBehaviour
     private void Start()
     {
         cam = Camera.main;
-        
+
         #region SETTING UP CS BUFFERS
         
         DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
