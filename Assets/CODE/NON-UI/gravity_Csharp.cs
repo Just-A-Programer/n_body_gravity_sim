@@ -165,13 +165,15 @@ public class gravity_Csharp : MonoBehaviour
         return m;
     }
     
-    private void Start()
+    void Start()
     {
         cam = Camera.main;
+		
 
         #region SETTING UP CS BUFFERS
         
         DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+		DotBuffer_TMP =       new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
         ChangeBuffer =        new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(float) * (3 + 2 + 2 + 1 + 1) + sizeof(uint) * 1);
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 2);
 
@@ -266,6 +268,7 @@ public class gravity_Csharp : MonoBehaviour
         dot_args[2] = (uint)DotMesh.GetIndexStart(0);
         dot_args[3] = (uint)DotMesh.GetBaseVertex(0);
         dotargsbuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, dot_args.Length, dot_args.Length * sizeof(uint));
+
         dotargsbuffer.SetData(dot_args);
 
         DotMaterial.renderQueue = 4000;
@@ -538,6 +541,7 @@ public class gravity_Csharp : MonoBehaviour
             DotMaterial.SetBuffer("_dotData", DotBuffer);
         }
     }
+
     int Sigma_func(int start, int end, Func<int, int> f)
     {
         int sum = 0;

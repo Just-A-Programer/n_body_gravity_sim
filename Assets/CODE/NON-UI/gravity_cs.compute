@@ -135,12 +135,20 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             
             if (distance(currPoss, Current_Target_Poss) <= 1)
             {
-                continue;
+                //continue;
                 currColo = float3(1,0,0);
                     
                 float2 jailerPoss = inputData[Current_Target_index].position;
                 float2 jailerVel = inputData[Current_Target_index].velocity;
                 float jailerMass = inputData[Current_Target_index].mass;
+                
+                //adjust the possition
+                if (distance(currPoss, Current_Target_Poss) < 1)
+                {
+                    float alpha = atan2(currPoss.y - jailerPoss.y, currPoss.x - jailerPoss.x);
+                    currPoss = float2(currPoss.x - 0.5*cos(alpha), currPoss.y - 0.5*sin(alpha)); //normaly this should be also be * by r, but in this case r is 1
+                    jailerPoss = float2(jailerPoss.x - 0.5*cos(-alpha), jailerPoss.y - 0.5*sin(-alpha));
+                }
                 
                 float2 Normal = float2( 
                     (jailerPoss.x - currPoss.x)/distance(currPoss, jailerPoss), 
@@ -158,7 +166,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
                 /*float j = ((currMass*jailerMass) / (currMass + jailerMass)) * (1 + c) * (jailerVel - currVelo) * Normal;
                 currVelo = (j/currMass)*Normal;*/
                 
-                continue;
+                
             }
 
             

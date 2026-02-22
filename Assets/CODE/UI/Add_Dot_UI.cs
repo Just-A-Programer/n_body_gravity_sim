@@ -46,6 +46,7 @@ public class Add_Dot_UI : MonoBehaviour
     {
         Vector2 mousePos = Input.mousePosition;
         currPos = cam.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, cam.nearClipPlane));
+        
         addvelocity = -(center - currPos)/sensitivity;
         
         gravityscript.VelocityPresent = addvelocity;

@@ -3065,7 +3065,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -3.782, y: -619}
+  m_AnchoredPosition: {x: -3.782, y: -619.03}
   m_SizeDelta: {x: 2623.812, y: 402.5548}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &800553560
@@ -6799,7 +6799,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   RENDER_DOTS: 1
   COLLISON: 0
-  RENDER_GRID: 1
   COMPUTE_SHADER: 1
   RENDER_DOT_MODE: 0
   dotCount: 20000
@@ -6807,17 +6806,9 @@ MonoBehaviour:
   MaxPos: 500
   ForceVector: {x: 0, y: 3}
   freeSpace: 0
-  GridstartingPoss: {x: 0, y: 0}
   computeShader: {fileID: 7200000, guid: 72615ecf4603ef64685b985145256082, type: 3}
   DotMesh: {fileID: -2124705421725058983, guid: d540919c2e454ceffba57192123d0057, type: 3}
   DotMaterial: {fileID: 2100000, guid: 5dd179d5ce5a2bd44be5e94e7f28bfaf, type: 2}
-  GridMaterial:
-  - {fileID: 2100000, guid: 509347520f3ea8149bcded25e5a66674, type: 2}
-  - {fileID: 2100000, guid: 404761782e3b0bf6690fbac2fc3dfa3f, type: 2}
-  - {fileID: 2100000, guid: df874d127f87210bea6fb915d49beeab, type: 2}
-  - {fileID: 2100000, guid: dadb69e65ff212dd69856c97e28edab6, type: 2}
-  - {fileID: 2100000, guid: 0f9f88c37ace0507ca679a09e4f59cda, type: 2}
-  - {fileID: 2100000, guid: bf5f7c97c1376d49d8a0df059698834b, type: 2}
   mouse_MODE: -1
   ColorPreset: {r: 1, g: 1, b: 1, a: 1}
   MassPresent: 1
