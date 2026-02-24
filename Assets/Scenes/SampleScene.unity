@@ -697,9 +697,10 @@ MonoBehaviour:
   fileName: scen
   fileDirectory: Assets/CODE/file-system/
   fileExtension: .grav
-  fps: 65535
-  time: 65534
-  dotcount_tmp: 4294967295
+  fps: 60
+  time: 10
+  dotcount_tmp: 1
+  accuracy: 1000
 --- !u!4 &209057938
 Transform:
   m_ObjectHideFlags: 0
