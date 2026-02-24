@@ -83,7 +83,7 @@ groupshared float2 calcForce[ThreadSize];
 
 
 
-float vectorMag(float2 vec)
+float pithagoras(float2 vec)
 {
     return sqrt(vec.x*vec.x + vec.y*vec.y);
 }
@@ -130,12 +130,13 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             
 
             float2 Current_Target_Poss = inputData[Current_Target_index].position;
-            // checks if its not the same obj and if its not too close
+            // checks if its not the same obj
             if ((currPoss.x == Current_Target_Poss.x && currPoss.y == Current_Target_Poss.y)) { continue; }
             
-            if (distance(currPoss, Current_Target_Poss) <= 1)
+            float OBJ_dist = distance(currPoss, Current_Target_Poss);
+            if (OBJ_dist <= 1)
             {
-                //continue;
+                continue;
                 currColo = float3(1,0,0);
                     
                 float2 jailerPoss = inputData[Current_Target_index].position;
@@ -143,19 +144,25 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
                 float jailerMass = inputData[Current_Target_index].mass;
                 
                 //adjust the possition
-                if (distance(currPoss, Current_Target_Poss) < 1)
+                if (OBJ_dist < 1)
                 {
-                    float alpha = atan2(currPoss.y - jailerPoss.y, currPoss.x - jailerPoss.x);
-                    currPoss = float2(currPoss.x - 0.5*cos(alpha), currPoss.y - 0.5*sin(alpha)); //normaly this should be also be * by r, but in this case r is 1
-                    jailerPoss = float2(jailerPoss.x - 0.5*cos(-alpha), jailerPoss.y - 0.5*sin(-alpha));
+                    float2 center = float2(0.5*abs(jailerPoss.x - currPoss.x) + min(jailerPoss.x, currPoss.x), 0.5*abs(jailerPoss.y - currPoss.y) + min(jailerPoss.y, currPoss.y));
+                    
+                    float alpha_c = atan2(center.y - currPoss.y, center.x - currPoss.x);
+                    float alpha_cj = atan2(center.y - jailerPoss.y, center.x - jailerPoss.x);
+                    
+                    currPoss = float2(center.x + 0.5*cos(alpha_c), center.y + 0.5*sin(alpha_c)); //normaly this should be also be * by r, but in this case r is 1
+                    jailerPoss = float2(center.x + 0.5*cos(alpha_cj), center.y + 0.5*sin(alpha_cj));
+                    
+                    OBJ_dist = 1;
                 }
                 
                 float2 Normal = float2( 
-                    (jailerPoss.x - currPoss.x)/distance(currPoss, jailerPoss), 
-                    (jailerPoss.y - currPoss.y)/distance(currPoss, jailerPoss)
+                    (jailerPoss.x - currPoss.x)/OBJ_dist, 
+                    (jailerPoss.y - currPoss.y)/OBJ_dist
                 );
                 
-                currVelo = currVelo - ((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( vectorMag(currPoss - jailerPoss), 2))) * (currPoss - jailerPoss); //+ (0.1 * Normal * (1 - pow(distance(currPoss, jailerPoss), -1)));
+                currVelo = currVelo - ((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( pithagoras(currPoss - jailerPoss), 2))) * (currPoss - jailerPoss); //+ (0.1 * Normal * (1 - pow(distance(currPoss, jailerPoss), -1)));
                 
                 
                 
@@ -170,7 +177,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             }
 
             
-            float F = G * ((currMass * Current_Target_Mass) / pow(distance(currPoss, Current_Target_Poss), 2.0)); // (pow(currPoss.x - Current_Target_Poss.x, 2) + pow(currPoss.y - Current_Target_Poss.y, 2))); 
+            float F = G * ((currMass * Current_Target_Mass) / pow(OBJ_dist, 2.0)); // (pow(currPoss.x - Current_Target_Poss.x, 2) + pow(currPoss.y - Current_Target_Poss.y, 2))); 
             float alpha = atan2((currPoss.y - Current_Target_Poss.y), (currPoss.x - Current_Target_Poss.x));
             
             calcForce[GroupIndex] += float2(cos(alpha) * F, sin(alpha) * F);

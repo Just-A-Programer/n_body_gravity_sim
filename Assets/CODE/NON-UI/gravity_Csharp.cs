@@ -7,6 +7,7 @@ using UnityEngine.Rendering;
 
 
 #region STRUCTURES
+
 struct dot_str_Csharp
 {
     public Vector3 color;
@@ -77,7 +78,7 @@ public class gravity_Csharp : MonoBehaviour
 
 
     //COMPUTE BUFFERS
-    GraphicsBuffer DotBuffer;
+    public GraphicsBuffer DotBuffer;
     GraphicsBuffer ChangeBuffer;
     GraphicsBuffer miscellaneousBuffer;
 
@@ -172,7 +173,7 @@ public class gravity_Csharp : MonoBehaviour
 
         #region SETTING UP CS BUFFERS
         
-        DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+        DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopySource, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
 		DotBuffer_TMP =       new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
         ChangeBuffer =        new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(float) * (3 + 2 + 2 + 1 + 1) + sizeof(uint) * 1);
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 2);

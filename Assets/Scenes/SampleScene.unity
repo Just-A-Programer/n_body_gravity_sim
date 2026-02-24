@@ -692,6 +692,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7920482f95ba40dfb85abad8836ff12c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Filehandler
+  computeShader: {fileID: 7200000, guid: 72615ecf4603ef64685b985145256082, type: 3}
+  gravScript: {fileID: 1805250054}
   fileName: scen
   fileDirectory: Assets/CODE/file-system/
   fileExtension: .grav
