@@ -17,6 +17,8 @@ struct file_dot_str
 
 public class Filehandler : MonoBehaviour
 {
+    public bool WRITING;
+    
     public ComputeShader computeShader;
     public gravity_Csharp gravScript;
     
@@ -38,6 +40,9 @@ public class Filehandler : MonoBehaviour
     public uint dotcount_tmp;
     public int accuracy = (int)(1 / 0.001f);
 
+    private uint current_frame = 0;
+    private int net_dot;
+    
     /*
     file header:
     2 B: fps 65536
@@ -51,7 +56,21 @@ public class Filehandler : MonoBehaviour
     2 B: color
     total: 16 hex, 8 B
     */
-    
+
+    #region Set Sim variables
+    public void SetFps(string str)
+    {
+        if (ushort.TryParse(str, out ushort newfps) && newfps != 0)
+            fps = newfps;
+    }
+    public void SetTime(string str)
+    {
+        if (ushort.TryParse(str, out ushort newtime) && newtime != 0)
+            time = newtime;
+    }
+    #endregion
+
+    #region Bit packing
     ushort Pack(int a, int b, int c)
     {
         return (ushort)(
@@ -68,14 +87,18 @@ public class Filehandler : MonoBehaviour
 
         return new Vector3Int(a, b, c);
     }
-    
-    public void Startfile(uint dotcount)
+    #endregion
+
+    public void Startfile()
     {
+        WRITING = true;
+        net_dot = gravScript.dotCount - gravScript.freeSpace;
+        
         file = File.Create(fileFullPath);
         
         byte[] DataFPS = BitConverter.GetBytes(fps);
         byte[] DataTime = BitConverter.GetBytes(time);
-        byte[] DataDot = BitConverter.GetBytes(dotcount);
+        byte[] DataDot = BitConverter.GetBytes(net_dot);
         
         Array.Resize(ref DataFPS, 2);
         Array.Resize(ref DataTime, 2);
@@ -90,11 +113,16 @@ public class Filehandler : MonoBehaviour
     
     public void Appendfile()
     {
-        Debug.Log("Appended");
+        current_frame++;
+        
+        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, gravScript.dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+        _dot = new file_dot_str[gravScript.dotCount];
+        _buffer.SetData(_dot);
         
         Graphics.CopyBuffer(gravScript.DotBuffer, _buffer);
         
         _buffer.GetData(_dot);
+        _buffer.Dispose();
 
         byte[] cahce = new byte[8];
         
@@ -115,10 +143,6 @@ public class Filehandler : MonoBehaviour
                 Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.z*31), 0, 31)  // blue
             };
             byte[] pColor = BitConverter.GetBytes(Pack(pColor_raw[0], pColor_raw[1], pColor_raw[2]));
-            /*{
-                (byte)(pColor_raw[0] + Mathf.FloorToInt(pColor_raw[1]/10)),
-                (byte)((pColor_raw[1] % 10) + pColor_raw[2])
-            };*/
             
             cahce[0] = pPosx[0];
             cahce[1] = pPosx[1];
@@ -148,7 +172,7 @@ public class Filehandler : MonoBehaviour
         Debug.Log("rtime: " + rtime.ToString());
         Debug.Log("rdotcount: " + rdotcount.ToString());
 
-        for (int o = 0; o < 5/*rfps * rtime*/; o++)
+        for (int o = 0; o < rfps * rtime; o++)
         {
             for (int i = 0; i < rdotcount; i++)
             {
@@ -185,16 +209,14 @@ public class Filehandler : MonoBehaviour
     private void Awake()
     {
         fileFullPath = fileDirectory + fileName + fileExtension;
-
-        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, gravScript.dotCount, sizeof(float) * (3 + 2 + 2 + 1));
-        _dot = new file_dot_str[gravScript.dotCount];
-        _buffer.SetData(_dot);
-        
-        Startfile(dotcount_tmp);
     }
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Space)) { Appendfile();}
+        if (Input.GetKey(KeyCode.P) && !WRITING) {Startfile();}
+        
+        if (current_frame >= time*fps) {WRITING = false;}
+        if (WRITING) { Appendfile();}
+        
         if (Input.GetKeyDown(KeyCode.C)) { readfile();}
     }
     private void OnApplicationQuit()

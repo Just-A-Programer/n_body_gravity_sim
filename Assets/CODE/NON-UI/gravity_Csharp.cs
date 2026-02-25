@@ -26,9 +26,6 @@ struct changeDotsStr_Csharp
     public Vector3 changeDataCol;
 }
 
-
-
-
 struct miscellaneousData
 {
     public int dotCount;
@@ -62,6 +59,9 @@ public class gravity_Csharp : MonoBehaviour
 
     public int freeSpace;
     
+    //File handler
+    [Header("FILE HANDLER")]
+    public Filehandler fHandler;
     
     //THE COMPUTE SHADER
     [Header("THE COMPUTE SHADER")]
@@ -123,13 +123,11 @@ public class gravity_Csharp : MonoBehaviour
     public bool start_empty;
     Camera cam;
     int newDotAmount;
-    bool resizing = false;
     const int batchSize = 65535;
     
     #endregion
 
-
-
+    
     Vector4 floatToVector4(float fl) { return new Vector4(fl, 0f, 0f, 0f); }
 
     Vector4[] floatArrToVector4(float[] fl)
@@ -141,8 +139,6 @@ public class gravity_Csharp : MonoBehaviour
         }
         return arr;
     }
-
-    
     
     private Mesh GenerateQuad(float D)
     {
@@ -165,6 +161,8 @@ public class gravity_Csharp : MonoBehaviour
         m.RecalculateTangents();
         return m;
     }
+    
+    
     
     void Start()
     {
@@ -281,40 +279,34 @@ public class gravity_Csharp : MonoBehaviour
     }
 
     private void FixedUpdate()
-    {          
-        computeShader.SetVector("fixedDeltaTime", floatToVector4(Time.fixedDeltaTime));
-        computeShader.SetVector("COLLISION", floatToVector4((float)Convert.ToInt32(COLLISON)));
-
-        
-        if (COMPUTE_SHADER)
-        {
-            for (int i = 0; i < (float)dotCount/(float)batchSize; i++)
-            {
-                computeShader.SetInt("DispatchOffset", i*batchSize);
-                computeShader.Dispatch(dot_kernel, (int)MathF.Min(dotCount-i*batchSize, batchSize), 1, 1);
-            }
-        }
+    {
 
     }
 
     private void Update()
     { 
-        
-        if (!resizing)
+        if (fHandler.WRITING)
         {
-            miscellaneousData[] miscData = new miscellaneousData[1];
-            miscellaneousBuffer.GetData(miscData);
+            computeShader.SetVector("fixedDeltaTime", floatToVector4(1f/fHandler.fps));
+            computeShader.SetVector("COLLISION", floatToVector4((float)Convert.ToInt32(COLLISON)));
 
-            dotCount  = miscData[0].dotCount;
-            freeSpace = miscData[0].freeSpace;
+
+            if (COMPUTE_SHADER)
+            {
+                for (int i = 0; i < (float)dotCount / (float)batchSize; i++)
+                {
+                    computeShader.SetInt("DispatchOffset", i * batchSize);
+                    computeShader.Dispatch(dot_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                }
+            }
         }
-
+        
+        
         // rendering obj
         if (RENDER_DOTS)
         {
             Graphics.DrawMeshInstancedIndirect(DotMesh, 0, DotMaterial, new Bounds(cam.transform.position, new Vector3(1,1,1)), dotargsbuffer, layer:10, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
-        
         
         #region mousemode
 
@@ -363,8 +355,7 @@ public class gravity_Csharp : MonoBehaviour
                     addDotUIClicks = 0;
                     if (newDotAmount >= freeSpace)
                     {
-                        resizing = true;
-
+                        DotBuffer_TMP.Dispose();
                         DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
                         computeShader.SetBuffer(CopyBuff_kernel, "inputData_TMP", DotBuffer_TMP);
                         computeShader.SetInt("CopyID", 1);
@@ -373,8 +364,9 @@ public class gravity_Csharp : MonoBehaviour
 
                         dotCount = (int)MathF.Floor(1.25f*(dotCount + newDotAmount - freeSpace));
                         freeSpace = 0;
-            
-                        DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+                        
+                        DotBuffer.Dispose();
+                        DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopySource, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
             
 
                         // IMPORTANT: bind NEW buffer as destination
@@ -410,7 +402,6 @@ public class gravity_Csharp : MonoBehaviour
 
                         DotMaterial.SetBuffer("_dotData", DotBuffer);
                         
-                        resizing = false;
                     }
                     else
                     {
