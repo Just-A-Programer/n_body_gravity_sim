@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using UnityEngine.Rendering;
 
 
 struct file_dot_str
@@ -18,16 +19,19 @@ struct file_dot_str
 public class Filehandler : MonoBehaviour
 {
     public bool WRITING;
-    
+    public bool READING;
+
+    public FPS_TARGETING FPSTARGETER;
     public ComputeShader computeShader;
     public gravity_Csharp gravScript;
+    public GameObject progressBar;
     
     GraphicsBuffer _buffer;
     file_dot_str[] _dot;
     
     public string fileName;
     public string fileDirectory;
-    public string fileExtension;
+    string fileExtension = ".grav";
     string fileFullPath;
     
     private FileStream file;
@@ -37,11 +41,20 @@ public class Filehandler : MonoBehaviour
     [Header("File info")] 
     public ushort fps;
     public ushort time;
-    public uint dotcount_tmp;
     public int accuracy = (int)(1 / 0.001f);
 
-    private uint current_frame = 0;
+    public short rfps;
+    public short rtime;
+    public int rdotcount;
+    
+    public uint current_frame = 0;
     private int net_dot;
+
+    //rendering
+    private Mesh dotMesh;
+    private Material dotMaterial;
+    GraphicsBuffer dotargsbuffer;
+    uint[] dot_args = new uint[4];
     
     /*
     file header:
@@ -89,10 +102,14 @@ public class Filehandler : MonoBehaviour
     }
     #endregion
 
+    #region WRITING
+
     public void Startfile()
     {
         WRITING = true;
         net_dot = gravScript.dotCount - gravScript.freeSpace;
+        
+        progressBar.SetActive(true);
         
         file = File.Create(fileFullPath);
         
@@ -158,53 +175,114 @@ public class Filehandler : MonoBehaviour
         }
     }
 
-    public void readfile()
+    #endregion
+
+    #region READING
+
+    void InitializeReading()
     {
-        _writer.Seek(0, SeekOrigin.Begin);
+        READING = true;
         
+        //searching for .grav files
+        string[] availableFiles = Directory.GetFiles(fileDirectory);
+
+        for (int i = 0; i < availableFiles.Length; i++)
+        {
+            string[] parsed = availableFiles[i].Split('.');
+
+            if (parsed[parsed.Length - 1] == "grav")
+            {
+
+                file = new FileStream(availableFiles[i], FileMode.Open);
+
+                break;
+            }
+        }
+        
+        //initializing reader and gathering data
         _reader = new BinaryReader(file);
         
-        short rfps = _reader.ReadInt16();
-        short rtime = _reader.ReadInt16();
-        int rdotcount = _reader.ReadInt32();
+        rfps = _reader.ReadInt16();
+        rtime = _reader.ReadInt16();
+        rdotcount = _reader.ReadInt32();
 
         Debug.Log("rfps: " + rfps.ToString());
         Debug.Log("rtime: " + rtime.ToString());
         Debug.Log("rdotcount: " + rdotcount.ToString());
+        
 
-        for (int o = 0; o < rfps * rtime; o++)
+        
+        //rendering
+
+        FPSTARGETER.TARGET_FPS = rfps;
+        
+        dotMesh = gravScript.DotMesh;
+        dotMaterial = gravScript.DotMaterial;
+        
+        RenderParams rp = new RenderParams(dotMaterial)
         {
-            for (int i = 0; i < rdotcount; i++)
-            {
-                byte[] posx_B = _reader.ReadBytes(3);
-                byte[] posy_B = _reader.ReadBytes(3);
-                byte[] coll_B = _reader.ReadBytes(2);
-                
-                Array.Resize(ref posx_B, 4);
-                Array.Resize(ref posy_B, 4);
-                ushort coll_short = BitConverter.ToUInt16(coll_B);
-                
-                
-                float posx_float = (float)(BitConverter.ToInt32(posx_B) - 8388607) / accuracy;
-                float posy_float = (float)(BitConverter.ToInt32(posy_B) - 8388607) / accuracy;
+            receiveShadows = false,
+            shadowCastingMode = ShadowCastingMode.Off
+        };
 
+        dot_args[0] = (uint)dotMesh.GetIndexCount(0);
+        dot_args[1] = (uint)rdotcount;
+        dot_args[2] = (uint)dotMesh.GetIndexStart(0);
+        dot_args[3] = (uint)dotMesh.GetBaseVertex(0);
+        dotargsbuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, dot_args.Length, dot_args.Length * sizeof(uint));
 
-                Vector3Int coll_unpacked = Unpack(coll_short);
-                Vector3Int coll_float = new Vector3Int(
-                    Mathf.FloorToInt(((float)coll_unpacked.x / 31) * 255),
-                    Mathf.FloorToInt(((float)coll_unpacked.y / 31) * 255),
-                    Mathf.FloorToInt(((float)coll_unpacked.z / 31) * 255)
-                    );
-                
-                Debug.Log("");
-                Debug.Log("frame: " + o.ToString() + " object: " + i.ToString());
-                Debug.Log("   posx: " + posx_float + " posy: " + posy_float);
-                Debug.Log("   r: " + coll_float.x + " g: " + coll_float.y + " b: " + coll_float.z);
-            }
-        }
+        dotargsbuffer.SetData(dot_args);
 
-        _reader.Close();
+        dotMaterial.renderQueue = 4000;
+        
+        
+        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, rdotcount, sizeof(float) * (3 + 2 + 2 + 1));
+        
+        dotMaterial.SetBuffer("_dotData", _buffer);
     }
+    
+    public void readfile()
+    {
+        //setting up a dotbuffer
+        _dot = new file_dot_str[rdotcount];
+        
+        for (int i = 0; i < rdotcount; i++)
+        {
+            byte[] posx_B = _reader.ReadBytes(3);
+            byte[] posy_B = _reader.ReadBytes(3);
+            byte[] coll_B = _reader.ReadBytes(2);
+                
+            Array.Resize(ref posx_B, 4);
+            Array.Resize(ref posy_B, 4);
+            ushort coll_short = BitConverter.ToUInt16(coll_B);
+               
+                
+            float posx_float = (float)(BitConverter.ToInt32(posx_B) - 8388607) / accuracy;
+            float posy_float = (float)(BitConverter.ToInt32(posy_B) - 8388607) / accuracy;
+
+
+            Vector3Int coll_unpacked = Unpack(coll_short);
+            Vector3 coll_float = new Vector3(
+                (float)coll_unpacked.x / 31,
+                (float)coll_unpacked.y / 31,
+                (float)coll_unpacked.z / 31
+            );
+            
+            _dot[i].position = new Vector2(posx_float, posy_float);
+            _dot[i].color = coll_float;
+            _dot[i].mass = 1; // TODO add mass to the files
+            _dot[i].velocity = new Vector2(0,0);
+        }
+        
+        _buffer.SetData(_dot);
+        dotMaterial.SetBuffer("_dotData", _buffer);
+        //_buffer.Dispose();
+        
+        Graphics.DrawMeshInstancedIndirect(dotMesh, 0, dotMaterial, new Bounds(Camera.main.transform.position, new Vector3(1,1,1)), dotargsbuffer, layer:10, castShadows:ShadowCastingMode.Off, receiveShadows:false);
+        
+        current_frame++;
+    }
+    #endregion
     
     private void Awake()
     {
@@ -212,12 +290,30 @@ public class Filehandler : MonoBehaviour
     }
     private void Update()
     {
-        if (Input.GetKey(KeyCode.P) && !WRITING) {Startfile();}
-        
-        if (current_frame >= time*fps) {WRITING = false;}
+        //writing
+        if (current_frame >= time * fps && WRITING)
+        {
+            WRITING = false;
+            _writer.Flush();
+            _writer.Dispose(); 
+            //_writer.Close();
+
+            current_frame = 0;
+        }
         if (WRITING) { Appendfile();}
         
-        if (Input.GetKeyDown(KeyCode.C)) { readfile();}
+        //reading
+        if (Input.GetKeyDown(KeyCode.C)) { InitializeReading();}
+        if (current_frame >= rtime * rfps && READING)
+        {
+            READING = false;
+            _reader.Dispose(); 
+            _reader.Close();
+
+            current_frame = 0;
+        }
+        if (READING) {readfile();}
+        
     }
     private void OnApplicationQuit()
     {

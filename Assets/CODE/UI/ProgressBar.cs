@@ -1,17 +1,16 @@
+using System;
 using UnityEngine;
 
 public class ProgressBar : MonoBehaviour
 {
     public Filehandler fHandler;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public RectTransform rt;
 
     // Update is called once per frame
     void Update()
     {
+        float newvalue = Mathf.Lerp(1100f,-1000f,((float)fHandler.current_frame/(float)(fHandler.fps*fHandler.time)));
         
+        rt.offsetMax = new Vector2(-newvalue, rt.offsetMax.y);
     }
 }

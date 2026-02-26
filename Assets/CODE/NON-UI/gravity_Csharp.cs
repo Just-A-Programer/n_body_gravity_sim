@@ -277,14 +277,14 @@ public class gravity_Csharp : MonoBehaviour
 
         #endregion
     }
-
-    private void FixedUpdate()
-    {
-
-    }
+    
 
     private void Update()
     { 
+        miscellaneousBuffer.GetData(miscellaneousInput);
+        dotCount = miscellaneousInput[0].dotCount;
+        freeSpace = miscellaneousInput[0].freeSpace;
+        
         if (fHandler.WRITING)
         {
             computeShader.SetVector("fixedDeltaTime", floatToVector4(1f/fHandler.fps));
@@ -300,8 +300,12 @@ public class gravity_Csharp : MonoBehaviour
                 }
             }
         }
-        
-        
+
+        if (fHandler.WRITING)
+        {
+            RENDER_DOTS = false;
+            dotargsbuffer.Dispose();
+        }
         // rendering obj
         if (RENDER_DOTS)
         {
