@@ -79,8 +79,8 @@ public class gravity_Csharp : MonoBehaviour
 
     //COMPUTE BUFFERS
     public GraphicsBuffer DotBuffer;
-    GraphicsBuffer ChangeBuffer;
     GraphicsBuffer miscellaneousBuffer;
+    GraphicsBuffer ChangeBuffer;
 
     GraphicsBuffer DotBuffer_TMP;
 
@@ -130,36 +130,32 @@ public class gravity_Csharp : MonoBehaviour
     
     Vector4 floatToVector4(float fl) { return new Vector4(fl, 0f, 0f, 0f); }
 
-    Vector4[] floatArrToVector4(float[] fl)
+    public void SortingDotBuffer()
     {
-        Vector4[] arr = new Vector4[fl.Length];
-        for (int i = 0; i < fl.Length; i++)
-        {
-            arr[i] = new Vector4(fl[i], 0f, 0f, 0f);
-        }
-        return arr;
-    }
-    
-    private Mesh GenerateQuad(float D)
-    {
-        Mesh m = new Mesh();
-        m.vertices = new[] {
-            new Vector3(-D/2, -D/2, 0),
-            new Vector3( D/2, -D/2, 0),
-            new Vector3( D/2,  D/2, 0),
-            new Vector3(-D/2,  D/2, 0)
-        };
-        m.uv = new[] {
-            new Vector2(0,0),
-            new Vector2(1,0),
-            new Vector2(1,1),
-            new Vector2(0,1)
-        };
-        m.triangles = new[] { 0, 1, 2, 0, 2, 3 };
-        m.RecalculateBounds();
-        m.RecalculateNormals();
-        m.RecalculateTangents();
-        return m;
+        dot_str_Csharp[] _dot = new dot_str_Csharp[dotCount];
+        int net_dot = dotCount - freeSpace;
+        
+        DotBuffer.GetData(_dot);
+        
+        //there are faster methods, but im too lazy
+        Array.Sort(_dot, (x, y) => y.mass.CompareTo(x.mass));
+        Array.Resize(ref _dot, net_dot);
+        
+        DotBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopySource, net_dot, sizeof(float) * (3 + 2 + 2 + 1));
+        DotBuffer_TMP = new GraphicsBuffer(GraphicsBuffer.Target.Structured, net_dot, sizeof(float) * (3 + 2 + 2 + 1));
+        DotBuffer.SetData(_dot);
+        
+        miscellaneousData[] miscInput = new miscellaneousData[1];
+        
+        dotCount = net_dot;
+        freeSpace = 0;
+        miscInput[0].dotCount = dotCount;
+        miscInput[0].freeSpace = freeSpace;
+        
+        miscellaneousBuffer.SetData(miscInput);
+        
+        RebindGPUBuffers(new bool[5] { true, true, true, true, true });
+        
     }
     
     
@@ -284,6 +280,7 @@ public class gravity_Csharp : MonoBehaviour
         miscellaneousBuffer.GetData(miscellaneousInput);
         dotCount = miscellaneousInput[0].dotCount;
         freeSpace = miscellaneousInput[0].freeSpace;
+        
         
         if (fHandler.WRITING)
         {
@@ -492,7 +489,7 @@ public class gravity_Csharp : MonoBehaviour
     }
     
 
-    void RebindGPUBuffers(bool[] exc)
+    public void RebindGPUBuffers(bool[] exc)
     {
         
         //GRAPHICS BUFFERS

@@ -15,12 +15,17 @@ struct file_dot_str
     public float mass;
 }
 
+struct lookup_str
+{
+    public Vector3 color;
+    public float mass;
+}
 
 public class Filehandler : MonoBehaviour
 {
     public bool WRITING;
     public bool READING;
-
+    
     public FPS_TARGETING FPSTARGETER;
     public ComputeShader computeShader;
     public gravity_Csharp gravScript;
@@ -28,6 +33,8 @@ public class Filehandler : MonoBehaviour
     
     GraphicsBuffer _buffer;
     file_dot_str[] _dot;
+    lookup_str[] _lookup;
+    
     
     public string fileName;
     public string fileDirectory;
@@ -50,6 +57,11 @@ public class Filehandler : MonoBehaviour
     public uint current_frame = 0;
     private int net_dot;
 
+    [Header("Canvas")]
+    public GameObject Draw_canvas;
+    public GameObject Generate_canvas;
+    public GameObject Replay_canvas;
+    
     //rendering
     private Mesh dotMesh;
     private Material dotMaterial;
@@ -61,13 +73,19 @@ public class Filehandler : MonoBehaviour
     2 B: fps 65536
     2 B: time limit ~109 min.
     4 B: dotcount >4B.
-    total: 16 hex, 8 B
+    total: 8 B
+
+    lookup:
+    3 B: mass
+    3 B: color
+    total: 6 B
 
     dot:
-    3 B: x
-    3 B: y
-    2 B: color
-    total: 16 hex, 8 B
+    3 B: position x
+    3 B: position y
+    3 B: velocity x
+    3 B: velocity y
+    total: 12 B
     */
 
     #region Set Sim variables
@@ -82,31 +100,20 @@ public class Filehandler : MonoBehaviour
             time = newtime;
     }
     #endregion
-
-    #region Bit packing
-    ushort Pack(int a, int b, int c)
-    {
-        return (ushort)(
-            ((a & 0x1F) << 11) |
-            ((b & 0x1F) << 6)  |
-            ((c & 0x1F) << 1)
-        );
-    }
-    Vector3Int Unpack(ushort packed)
-    {
-        int a = (packed >> 11) & 0x1F;
-        int b = (packed >> 6)  & 0x1F;
-        int c = (packed >> 1)  & 0x1F;
-
-        return new Vector3Int(a, b, c);
-    }
-    #endregion
+    
 
     #region WRITING
 
     public void Startfile()
     {
         WRITING = true;
+        current_frame = 0;
+        
+        SetCanvas(2);
+        
+        //sorting out dot buffer
+        gravScript.SortingDotBuffer();
+        
         net_dot = gravScript.dotCount - gravScript.freeSpace;
         
         progressBar.SetActive(true);
@@ -126,6 +133,33 @@ public class Filehandler : MonoBehaviour
         _writer.Write(DataTime);
         _writer.Write(DataDot);
         _writer.Flush();
+        
+        
+        //creating lookup
+        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, gravScript.dotCount, sizeof(float) * (3 + 2 + 2 + 1));
+        _dot = new file_dot_str[gravScript.dotCount];
+        _buffer.SetData(_dot);
+        
+        Graphics.CopyBuffer(gravScript.DotBuffer, _buffer);
+        
+        _buffer.GetData(_dot);
+        for (int i = 0; i < gravScript.dotCount; i++)
+        {
+            if (_dot[i].mass == 0) {continue;}
+            
+            byte[] mass = BitConverter.GetBytes(Mathf.Clamp(Mathf.FloorToInt(_dot[i].mass * 100), 0, 16777215));
+            Array.Resize(ref mass, 3);
+            // From: 0-1 to 0-255
+            byte[] color =
+            {
+                (byte)Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.x*255), 0, 255), // red
+                (byte)Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.y*255), 0, 255), // green
+                (byte)Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.z*255), 0, 255)  // blue
+            };
+            
+            _writer.Write(mass);
+            _writer.Write(color);
+        }
     }
     
     public void Appendfile()
@@ -141,7 +175,7 @@ public class Filehandler : MonoBehaviour
         _buffer.GetData(_dot);
         _buffer.Dispose();
 
-        byte[] cahce = new byte[8];
+        byte[] cahce = new byte[12];
         
         for (int i = 0; i < gravScript.dotCount; i++)
         {
@@ -152,14 +186,9 @@ public class Filehandler : MonoBehaviour
             byte[] pPosx = BitConverter.GetBytes(pPos.x);
             byte[] pPosy = BitConverter.GetBytes(pPos.y);
             
-            
-            int[] pColor_raw =
-            {
-                Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.x*31), 0, 31), // red
-                Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.y*31), 0, 31), // green
-                Mathf.Clamp(Mathf.FloorToInt(_dot[i].color.z*31), 0, 31)  // blue
-            };
-            byte[] pColor = BitConverter.GetBytes(Pack(pColor_raw[0], pColor_raw[1], pColor_raw[2]));
+            Vector2Int pVel = new Vector2Int(Mathf.Clamp(Mathf.FloorToInt(_dot[i].velocity.x*accuracy)+8388607, 0, 16777216), Mathf.Clamp(Mathf.FloorToInt(_dot[i].velocity.y*accuracy)+8388607, 0, 16777216));
+            byte[] pVelx = BitConverter.GetBytes(pVel.x);
+            byte[] pVely = BitConverter.GetBytes(pVel.y);
             
             cahce[0] = pPosx[0];
             cahce[1] = pPosx[1];
@@ -167,8 +196,12 @@ public class Filehandler : MonoBehaviour
             cahce[3] = pPosy[0];
             cahce[4] = pPosy[1];
             cahce[5] = pPosy[2];
-            cahce[6] = pColor[0];
-            cahce[7] = pColor[1];
+            cahce[6] = pVelx[0];
+            cahce[7] = pVelx[1];
+            cahce[8] = pVelx[2];
+            cahce[9] = pVely[0];
+            cahce[10] = pVely[1];
+            cahce[11] = pVely[2];
             
             _writer.Write(cahce);
             _writer.Flush();
@@ -182,6 +215,9 @@ public class Filehandler : MonoBehaviour
     void InitializeReading()
     {
         READING = true;
+        current_frame = 0;
+        
+        SetCanvas(3);
         
         //searching for .grav files
         string[] availableFiles = Directory.GetFiles(fileDirectory);
@@ -210,7 +246,27 @@ public class Filehandler : MonoBehaviour
         Debug.Log("rtime: " + rtime.ToString());
         Debug.Log("rdotcount: " + rdotcount.ToString());
         
+        
+        //lookup
+        _lookup = new lookup_str[gravScript.dotCount];
+        
+        for (int i = 0; i < rdotcount; i++)
+        {
+            if (_dot[i].mass == 0) {continue;}
 
+            byte[] mass_B = _reader.ReadBytes(3);
+            Array.Resize(ref mass_B, 4);
+            
+            float mass_F = (float)BitConverter.ToInt32(mass_B)/100;
+            
+            Vector3 color_F = new Vector3(
+                (float)_reader.ReadBytes(1)[0]/255,
+                (float)_reader.ReadBytes(1)[0]/255,
+                (float)_reader.ReadBytes(1)[0]/255
+            );
+            _lookup[i].mass = mass_F;
+            _lookup[i].color = color_F;
+        }
         
         //rendering
 
@@ -250,33 +306,29 @@ public class Filehandler : MonoBehaviour
         {
             byte[] posx_B = _reader.ReadBytes(3);
             byte[] posy_B = _reader.ReadBytes(3);
-            byte[] coll_B = _reader.ReadBytes(2);
+            byte[] velx_B = _reader.ReadBytes(3);
+            byte[] vely_B = _reader.ReadBytes(3);
                 
             Array.Resize(ref posx_B, 4);
             Array.Resize(ref posy_B, 4);
-            ushort coll_short = BitConverter.ToUInt16(coll_B);
+            Array.Resize(ref velx_B, 4);
+            Array.Resize(ref vely_B, 4);
                
                 
             float posx_float = (float)(BitConverter.ToInt32(posx_B) - 8388607) / accuracy;
             float posy_float = (float)(BitConverter.ToInt32(posy_B) - 8388607) / accuracy;
-
-
-            Vector3Int coll_unpacked = Unpack(coll_short);
-            Vector3 coll_float = new Vector3(
-                (float)coll_unpacked.x / 31,
-                (float)coll_unpacked.y / 31,
-                (float)coll_unpacked.z / 31
-            );
+            float velx_float = (float)(BitConverter.ToInt32(velx_B) - 8388607) / accuracy;
+            float vely_float = (float)(BitConverter.ToInt32(vely_B) - 8388607) / accuracy;
+            
             
             _dot[i].position = new Vector2(posx_float, posy_float);
-            _dot[i].color = coll_float;
-            _dot[i].mass = 1; // TODO add mass to the files
-            _dot[i].velocity = new Vector2(0,0);
+            _dot[i].velocity = new Vector2(velx_float, vely_float);
+            _dot[i].color = _lookup[i].color;
+            _dot[i].mass = _lookup[i].mass;
         }
         
         _buffer.SetData(_dot);
         dotMaterial.SetBuffer("_dotData", _buffer);
-        //_buffer.Dispose();
         
         Graphics.DrawMeshInstancedIndirect(dotMesh, 0, dotMaterial, new Bounds(Camera.main.transform.position, new Vector3(1,1,1)), dotargsbuffer, layer:10, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         
@@ -297,8 +349,7 @@ public class Filehandler : MonoBehaviour
             _writer.Flush();
             _writer.Dispose(); 
             //_writer.Close();
-
-            current_frame = 0;
+            
         }
         if (WRITING) { Appendfile();}
         
@@ -310,15 +361,25 @@ public class Filehandler : MonoBehaviour
             _reader.Dispose(); 
             _reader.Close();
 
-            current_frame = 0;
+            
         }
         if (READING) {readfile();}
         
     }
     private void OnApplicationQuit()
     {
-        _writer.Dispose();
         _writer.Close();
         File.Delete(fileDirectory + fileName + fileExtension);
+    }
+
+    void SetCanvas(int id)
+    {
+        Draw_canvas.SetActive(false);
+        Generate_canvas.SetActive(false);
+        Replay_canvas.SetActive(false);
+        
+        if (id == 1) {Draw_canvas.SetActive(true);}
+        else if (id == 2) {Generate_canvas.SetActive(true);}
+        else if (id == 3) {Replay_canvas.SetActive(true);}
     }
 }

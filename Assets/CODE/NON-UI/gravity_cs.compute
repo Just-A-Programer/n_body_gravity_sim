@@ -1,3 +1,4 @@
+#pragma kernel MinimizeBuffer
 #pragma kernel CSMain
 #pragma kernel AddorRemoveDots
 #pragma kernel CopyBuffer
@@ -88,6 +89,18 @@ float pithagoras(float2 vec)
     return sqrt(vec.x*vec.x + vec.y*vec.y);
 }
 
+[numthreads(1024, 1, 1)]
+void MinimizeBuffer(int GroupIndex : SV_GroupIndex)
+{
+    int dotCount = miscData[0].dotCount;
+    
+    int B = floor((dotCount - 1.0) / ThreadSize);
+    int E = (dotCount - 1.0) % ThreadSize;
+    int Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+    int End_cord = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+    
+
+}
 
 [numthreads(4, 4, 2)]
 void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
@@ -208,53 +221,6 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
 
     }
-    
-    GroupMemoryBarrierWithGroupSync();
-
-    /*
-        COLLISION DETECTION
-    */
-    
-    if (COLLISION.x == 1 && GroupIndex == 0)
-    {
-        
-
-        /*//colision detectecion
-        if (distance(currPoss, inputData[6969].position) <= 1 && targetID != DispatchGroupIndex)
-        {
-            currColo = float3(1,0,0);
-                    
-            /*float2 jailerPoss = inputData[targetID].position;
-            float2 jailerVel = inputData[targetID].velocity;
-            float jailerMass = inputData[targetID].mass;
-
-            float dist = distance(jailerPoss, currPoss);
-                    
-            float2 Normal = float2(
-                (jailerPoss.x - currPoss.x)/dist,
-                (jailerPoss.y - currPoss.y)/dist
-            );
-                    
-            float2 Tangent = float2(-Normal.y, Normal.x);
-                    
-            float DpTan = currVelo.x * Tangent.x + currVelo.y * Tangent.y;
-                    
-            float DpNormal1 = currVelo.x * Normal.x + currVelo.y * Normal.y;
-            float DpNormal2 = jailerVel.x * Normal.x + jailerVel.y * Normal.y;
-                    
-            float momentum = (DpNormal1 * (currMass - jailerMass) + 2.0 * jailerMass * DpNormal2) / (currMass + jailerMass);
-                    
-            currVelo.x -= Tangent.x * DpTan + Normal.x * momentum;
-            currVelo.y -= Tangent.y * DpTan + Normal.y * momentum;*/
-            /*currVelo.x = -currVelo.x;
-            currVelo.y = -currVelo.y;
-            
-        }*/
-        
-    }
-    
-    
-
     
     GroupMemoryBarrierWithGroupSync();
     // output
