@@ -4,32 +4,42 @@ using UnityEngine;
 public class Generation_text : MonoBehaviour
 { 
     public Filehandler fHandler;
+    public GameObject PlayButton;
     TMPro.TextMeshProUGUI text;
-    private float fpsUpdateTimer = 0;
-    private string donetext;
+    string donetext;
     float fps;
-    
-    private float avg = 0;
-    
+    float avg = 0;
+
+    float Time_start;
+    float Time_end;
     
     private void Start()
     {
         text = this.GetComponent<TMPro.TextMeshProUGUI>();
     }
 
+    private void Awake()
+    {
+        Time_start = Time.time;
+    }
+
     private void Update()
     {
+        float Time_elapsed = Time.time - Time_start;
         if (fHandler.current_frame >= (fHandler.fps * fHandler.time))
         {
-            donetext = "Baita!!";
+            donetext = "Baigta!!";
+            Time_end = Time_elapsed;
+            PlayButton.SetActive(true);
         }
         else
         {
             donetext = "";
+            PlayButton.SetActive(false);
         }
         
-        avg += ((Time.deltaTime/Time.timeScale) - avg) * 0.03f;
-        fps = 1f / avg;
+        
+        fps = (float)fHandler.current_frame / Time_elapsed;
         text.text = 
             Mathf.Floor((float)fHandler.current_frame / (fHandler.fps * fHandler.time) * 10000) / 100 + "% \n" +
             fHandler.current_frame + " / " + fHandler.fps * fHandler.time + "\n" +

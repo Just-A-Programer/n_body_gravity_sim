@@ -163,7 +163,8 @@ public class gravity_Csharp : MonoBehaviour
     void Start()
     {
         cam = Camera.main;
-		
+
+        RENDER_DOT_MODE = 0;
 
         #region SETTING UP CS BUFFERS
         

@@ -212,7 +212,7 @@ public class Filehandler : MonoBehaviour
 
     #region READING
 
-    void InitializeReading()
+    public void InitializeReading()
     {
         READING = true;
         current_frame = 0;
@@ -242,9 +242,9 @@ public class Filehandler : MonoBehaviour
         rtime = _reader.ReadInt16();
         rdotcount = _reader.ReadInt32();
 
-        Debug.Log("rfps: " + rfps.ToString());
+        /*Debug.Log("rfps: " + rfps.ToString());
         Debug.Log("rtime: " + rtime.ToString());
-        Debug.Log("rdotcount: " + rdotcount.ToString());
+        Debug.Log("rdotcount: " + rdotcount.ToString());*/
         
         
         //lookup
