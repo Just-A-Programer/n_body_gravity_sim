@@ -106,7 +106,7 @@ public class Filehandler : MonoBehaviour
 
     public void Startfile()
     {
-        WRITING = true;
+
         current_frame = 0;
         
         SetCanvas(2);

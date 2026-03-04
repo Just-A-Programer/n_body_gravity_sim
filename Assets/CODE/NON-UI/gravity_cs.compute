@@ -66,6 +66,7 @@ int CopyID;
 int Distance;
 float Resolution;
 float2 CenterBallPoss;
+float collisionDampaning = 8;
 groupshared float2 calcForceTraj[ThreadSize];
 
 
@@ -80,6 +81,7 @@ RWStructuredBuffer<trajectoryPath> trajPath;
 
 
 groupshared float2 calcForce[ThreadSize];
+groupshared float2 calcImpulse[ThreadSize];
 
 
 
@@ -101,7 +103,8 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     float2 currVelo = inputData[DispatchGroupIndex].velocity;
     float3 currColo = inputData[DispatchGroupIndex].color;
     
-    calcForce[GroupIndex] = 0;
+    calcForce[GroupIndex] = float2(0,0);
+    calcImpulse[GroupIndex] = float2(0,0);
     
     uint dotCount = uint(miscData[0].dotCount);
     
@@ -113,7 +116,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     
     //currColo = float3(1,1,1);
     // calculate everybodies forces
-    if (DispatchGroupIndex <= dotCount && currMass != 0)
+    if (DispatchGroupIndex < dotCount && currMass != 0)
     {
         B = floor((dotCount - 1.0) / ThreadSize);
         E = (dotCount - 1.0) % ThreadSize;
@@ -131,39 +134,20 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             
             
             float2 jailerPoss = inputData[Current_Target_index].position;
+            float2 jailerVel = inputData[Current_Target_index].velocity;
             // checks if its not the same obj
             
             //if (currPoss.x == jailerPoss.x && currPoss.y == jailerPoss.y) { continue; }
             if (DispatchGroupIndex == Current_Target_index) {continue;}
             
-            float OBJ_dist = pithagoras(float2(currPoss.x - jailerPoss.x, currPoss.y - jailerPoss.y));
+            float OBJ_dist = distance(currPoss, jailerPoss);
             
+
             
             if (OBJ_dist <= 1.0)
             {
-
-                
-                float2 jailerVel = inputData[Current_Target_index].velocity;
-                
-                //adjust the possition
-                /*if (OBJ_dist < 1.0)
-                {
-                    float2 center = float2(0.5*abs(jailerPoss.x - currPoss.x) + min(jailerPoss.x, currPoss.x), 0.5*abs(jailerPoss.y - currPoss.y) + min(jailerPoss.y, currPoss.y));
-                    
-                    float alpha_c = atan2(center.y - currPoss.y, center.x - currPoss.x);
-                    float alpha_cj = atan2(center.y - jailerPoss.y, center.x - jailerPoss.x);
-                    
-                    currPoss = float2(center.x + 0.5*cos(alpha_c), center.y + 0.5*sin(alpha_c)); //normaly this should be also be * by r, but in this case r is 1
-                    jailerPoss = float2(center.x + 0.5*cos(alpha_cj), center.y + 0.5*sin(alpha_cj));
-                    
-                    OBJ_dist = distance(currPoss, jailerPoss);
-
-                }*/
-                
-                currVelo = currVelo - ((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( pithagoras(currPoss - jailerPoss), 2.0))) * (currPoss - jailerPoss); //+ (0.1 * Normal * (1 - pow(distance(currPoss, jailerPoss), -1)));
-                jailerVel = jailerVel - ((2.0 * currMass)/(currMass+jailerMass)) * ((dot(jailerVel-currVelo, jailerPoss-currPoss)) / (pow( pithagoras(jailerPoss - currPoss), 2.0))) * (jailerPoss - currPoss);
-                //inputData[Current_Target_index].velocity.x += jailerVel.x;
-                //inputData[Current_Target_index].velocity.y += jailerVel.y;
+                float dampner = 0.5;
+                calcImpulse[GroupIndex] -= dampner * (((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( pithagoras(currPoss - jailerPoss), 2.0))) * (currPoss - jailerPoss));
                 
                 continue;
             }
@@ -183,9 +167,11 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     {
         
         float2 summForce = float2(0,0);
+        float2 summImpulse = float2(0,0);
         for (int i = 0; i < ThreadSize; i++)
         {
             summForce += calcForce[i];
+            summImpulse += calcImpulse[i];
         }
         
         //Coneverts calculated force to bodies velocity
@@ -193,6 +179,10 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         //F=ma -> a=F/m
 
         //dont get why splitting vel calculations into 2 helps, but without it causes extra unwanted vel
+        //impulse
+        
+        currVelo += summImpulse;
+   
         currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
         
         currPoss -= currVelo * fixedDeltaTime.x;

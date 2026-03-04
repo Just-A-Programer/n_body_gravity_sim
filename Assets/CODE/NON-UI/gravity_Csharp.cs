@@ -156,6 +156,7 @@ public class gravity_Csharp : MonoBehaviour
         
         RebindGPUBuffers(new bool[5] { true, true, true, true, true });
         
+        fHandler.WRITING = true;
     }
     
     
