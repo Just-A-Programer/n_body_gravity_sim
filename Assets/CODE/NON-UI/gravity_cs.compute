@@ -147,7 +147,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             if (OBJ_dist <= 1.0)
             {
                 float dampner = 0.5;
-                calcImpulse[GroupIndex] -= dampner * (((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( pithagoras(currPoss - jailerPoss), 2.0))) * (currPoss - jailerPoss));
+                calcImpulse[GroupIndex] -= (((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( pithagoras(currPoss - jailerPoss), 2.0))) * (currPoss - jailerPoss));
                 
                 continue;
             }

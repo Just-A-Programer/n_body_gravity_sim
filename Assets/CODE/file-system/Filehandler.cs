@@ -25,6 +25,8 @@ public class Filehandler : MonoBehaviour
 {
     public bool WRITING;
     public bool READING;
+    public bool PAUSED;
+    public bool ENDED;
     
     public FPS_TARGETING FPSTARGETER;
     public ComputeShader computeShader;
@@ -33,6 +35,7 @@ public class Filehandler : MonoBehaviour
     
     GraphicsBuffer _buffer;
     file_dot_str[] _dot;
+    file_dot_str[] _dotLastFrame;
     lookup_str[] _lookup;
     
     
@@ -99,8 +102,20 @@ public class Filehandler : MonoBehaviour
         if (ushort.TryParse(str, out ushort newtime) && newtime != 0)
             time = newtime;
     }
+
+    public void PAUSERESUME(bool state)
+    {
+        PAUSED = !state;
+    }
     #endregion
-    
+
+    void DisplayLastFrame()
+    {
+        _buffer.SetData(_dotLastFrame);
+        dotMaterial.SetBuffer("_dotData", _buffer);
+        
+        Graphics.DrawMeshInstancedIndirect(dotMesh, 0, dotMaterial, new Bounds(Camera.main.transform.position, new Vector3(1,1,1)), dotargsbuffer, layer:10, castShadows:ShadowCastingMode.Off, receiveShadows:false);
+    }
 
     #region WRITING
 
@@ -215,6 +230,8 @@ public class Filehandler : MonoBehaviour
     public void InitializeReading()
     {
         READING = true;
+        PAUSED = false;
+        ENDED = false;
         current_frame = 0;
         
         SetCanvas(3);
@@ -354,17 +371,26 @@ public class Filehandler : MonoBehaviour
         if (WRITING) { Appendfile();}
         
         //reading
-        if (Input.GetKeyDown(KeyCode.C)) { InitializeReading();}
         if (current_frame >= rtime * rfps && READING)
         {
+            _dotLastFrame = new file_dot_str[_dot.Length];
+            _dot.CopyTo(_dotLastFrame, 0);
+            ENDED = true;
+            
+            DisplayLastFrame();
+            
             READING = false;
             _reader.Dispose(); 
             _reader.Close();
-
-            
         }
-        if (READING) {readfile();}
-        
+        if (READING && !PAUSED) {readfile();}
+        if (PAUSED || ENDED) {DisplayLastFrame();}
+
+        if (READING)
+        {
+            _dotLastFrame = new file_dot_str[_dot.Length];
+            _dot.CopyTo(_dotLastFrame, 0);
+        }
     }
     private void OnApplicationQuit()
     {
