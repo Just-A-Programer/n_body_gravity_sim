@@ -72,17 +72,17 @@ public class gravity_Csharp : MonoBehaviour
     public Mesh DotMesh;
     public Material DotMaterial;
 
-    GraphicsBuffer dotargsbuffer;
+    public GraphicsBuffer dotargsbuffer;
     uint[] dot_args = new uint[4];
     
 
 
     //COMPUTE BUFFERS
     public GraphicsBuffer DotBuffer;
-    GraphicsBuffer miscellaneousBuffer;
-    GraphicsBuffer ChangeBuffer;
+    public GraphicsBuffer miscellaneousBuffer;
+    public GraphicsBuffer ChangeBuffer;
 
-    GraphicsBuffer DotBuffer_TMP;
+    public GraphicsBuffer DotBuffer_TMP;
 
 
     //STRUCTs
@@ -94,6 +94,7 @@ public class gravity_Csharp : MonoBehaviour
 
 
     //KERNEL IDs
+    int collsion_kernel;
     int dot_kernel;
     int change_kernel;
     int CopyBuff_kernel;
@@ -118,7 +119,8 @@ public class gravity_Csharp : MonoBehaviour
 
 
     //MISCELLANEOUS
-    [Header("MISCELLANEOUS")]
+    [Header("MISCELLANEOUS")] 
+    public Canvas canvas;
     public float G = 1;
     public bool start_empty;
     Camera cam;
@@ -174,6 +176,7 @@ public class gravity_Csharp : MonoBehaviour
         ChangeBuffer =        new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(float) * (3 + 2 + 2 + 1 + 1) + sizeof(uint) * 1);
         miscellaneousBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, 1,        sizeof(int) * 2);
 
+        collsion_kernel   = computeShader.FindKernel("Collision");
         dot_kernel        = computeShader.FindKernel("CSMain");
         change_kernel     = computeShader.FindKernel("AddorRemoveDots");
         CopyBuff_kernel   = computeShader.FindKernel("CopyBuffer");
@@ -283,18 +286,37 @@ public class gravity_Csharp : MonoBehaviour
         dotCount = miscellaneousInput[0].dotCount;
         freeSpace = miscellaneousInput[0].freeSpace;
         
+        /*dot_str_Csharp[] _dot = new dot_str_Csharp[dotCount];
+        
+        DotBuffer.GetData(_dot);
+        
+        if (_dot[0].position.x == Single.NaN)
+        {
+            Debug.Log(fHandler.current_frame);
+        }*/
+
+
         
         if (fHandler.WRITING)
         {
             computeShader.SetVector("fixedDeltaTime", floatToVector4(1f/fHandler.fps));
             computeShader.SetVector("COLLISION", floatToVector4((float)Convert.ToInt32(COLLISON)));
 
-
+            /*for (int i = 0; i < dotCount; i++)
+            {
+                if (_dot[i].color != new Vector3(1, 1, 1) && _dot[i].color != new Vector3(0, 0, 0))
+                {
+                    Debug.Log(fHandler.current_frame + "   " + i + "   " + _dot[i].color);
+                }
+            }*/
+            
             if (COMPUTE_SHADER)
             {
                 for (int i = 0; i < (float)dotCount / (float)batchSize; i++)
                 {
                     computeShader.SetInt("DispatchOffset", i * batchSize);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+
                     computeShader.Dispatch(dot_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
                 }
             }
@@ -315,9 +337,10 @@ public class gravity_Csharp : MonoBehaviour
 
         Vector3 point = new Vector3();
         Vector2 mousePos = new Vector2();
+        mousePos = Input.mousePosition;
         if (mouse_MODE != -1)
         {
-            mousePos = Input.mousePosition;
+            
             point = cam.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, cam.nearClipPlane));
 
             if (!(Input.GetKey(KeyCode.LeftControl)))
@@ -329,7 +352,12 @@ public class gravity_Csharp : MonoBehaviour
             Mouse_influence_sphere.transform.position = new Vector3(point.x, point.y, 0);
             Mouse_influence_sphere.transform.localScale = new Vector3(Mouse_influence_sphere_radius * 2, Mouse_influence_sphere_radius * 2, 0);
         }
-
+        
+        Vector2 Mouse_ui_poss = new Vector2();
+        
+        Mouse_ui_poss = Input.mousePosition / canvas.scaleFactor;
+        
+        
         // add dots
         if (mouse_MODE == 0)
         {
@@ -350,12 +378,14 @@ public class gravity_Csharp : MonoBehaviour
 
             ChangeBuffer.SetData(ChangeInput);
 
-            if (Input.GetKeyDown(KeyCode.Mouse0))
+
+            if (Input.GetKeyDown(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f)
             {
                 addDotUIClicks++;
                 if (addDotUIClicks == 3)
                 {
                     addDotUIClicks = 0;
+
                     if (newDotAmount >= freeSpace)
                     {
                         DotBuffer_TMP.Dispose();
@@ -408,7 +438,6 @@ public class gravity_Csharp : MonoBehaviour
                     }
                     else
                     {
-
                         computeShader.Dispatch(change_kernel, 1, 1, 1);
                     }
                 }
@@ -421,6 +450,7 @@ public class gravity_Csharp : MonoBehaviour
             }
 
         }
+        
         // remove dots
         else if (mouse_MODE == 1) 
         {
@@ -431,7 +461,7 @@ public class gravity_Csharp : MonoBehaviour
             ChangeInput[0].centerPos = new Vector2(point.x, point.y);
             ChangeBuffer.SetData(ChangeInput);
 
-            if (Input.GetKey(KeyCode.Mouse0))
+            if (Input.GetKey(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f)
             {
                 
                 computeShader.Dispatch(change_kernel, 1, 1, 1);
@@ -451,7 +481,7 @@ public class gravity_Csharp : MonoBehaviour
 
             ChangeBuffer.SetData(ChangeInput);
 
-            if (Input.GetKey(KeyCode.Mouse0))
+            if (Input.GetKey(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f)
             {
 
                 computeShader.Dispatch(change_kernel, 1, 1, 1);
@@ -471,7 +501,7 @@ public class gravity_Csharp : MonoBehaviour
 
             ChangeBuffer.SetData(ChangeInput);
 
-            if (Input.GetKey(KeyCode.Mouse0))
+            if (Input.GetKey(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f)
             {
 
                 computeShader.Dispatch(change_kernel, 1, 1, 1);
@@ -497,7 +527,8 @@ public class gravity_Csharp : MonoBehaviour
         //GRAPHICS BUFFERS
         if (exc[0])
         {
-            
+            computeShader.SetBuffer(collsion_kernel, "inputData", DotBuffer);
+            computeShader.SetBuffer(collsion_kernel, "miscData", miscellaneousBuffer);
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(dot_kernel, "miscData",  miscellaneousBuffer);
             
@@ -567,20 +598,9 @@ public class gravity_Csharp : MonoBehaviour
         masstext.text = "";
     }
 
-    public void ChangeColorPreset(string str)
+    public void ChangeColorPreset(Color col)
     {
-        if (str == "RED")
-            ColorPreset = new Color(1, 0, 0);
-        else if (str == "BLUE")
-            ColorPreset = new Color(0, 0, 1);
-        else if (str == "GREEN")
-            ColorPreset = new Color(0, 1, 0);
-        else if (str == "PURPLE")
-            ColorPreset = new Color(1, 0, 1);
-        else if (str == "CYAN")
-            ColorPreset = new Color(0, 1, 1);
-        else if (str == "WHITE")
-            ColorPreset = new Color(1, 1, 1);
+        ColorPreset = col; 
     }
 
     public void ChangeRenderMode(int id)

@@ -3,6 +3,7 @@ using System.Collections;
 
 public class Add_Dot_UI : MonoBehaviour
 {
+    public Canvas canvas;
     public gravity_Csharp gravityscript;
     public GameObject centerballObj;
     public GameObject lenghtprefab;
@@ -19,6 +20,7 @@ public class Add_Dot_UI : MonoBehaviour
     Vector2 addvelocity;
     Camera cam;
 
+    Vector2 Mouse_ui_poss;
 
     void Start()
     {
@@ -36,6 +38,7 @@ public class Add_Dot_UI : MonoBehaviour
         centerballObj.transform.position = new Vector3(center.x, center.y, 0);
         centerballObj.transform.localScale = new Vector3(cam.orthographicSize*centerballSize, cam.orthographicSize*centerballSize, 0);
         
+
         gravityscript.PositionPresent = center;
         
         /*lenghtobj[0] = Instantiate(lenghtprefab);
@@ -46,11 +49,15 @@ public class Add_Dot_UI : MonoBehaviour
     {
         Vector2 mousePos = Input.mousePosition;
         currPos = cam.ScreenToWorldPoint(new Vector3(mousePos.x, mousePos.y, cam.nearClipPlane));
-        
-        addvelocity = -(center - currPos)/sensitivity;
-        
-        gravityscript.VelocityPresent = addvelocity;
-        
+
+
+
+
+        if (Mouse_ui_poss.y > 300f)
+        {
+            addvelocity = -(gravityscript.PositionPresent - currPos) / sensitivity;
+            gravityscript.VelocityPresent = addvelocity;
+        }
     }
     public void finishingpass()
     {
@@ -63,9 +70,15 @@ public class Add_Dot_UI : MonoBehaviour
     void Update()
     {
         if (active) { 
+            
+            Mouse_ui_poss = new Vector2();
+            Mouse_ui_poss = Input.mousePosition / canvas.scaleFactor;
+            
+            centerballObj.transform.position = new Vector3(gravityscript.PositionPresent.x, gravityscript.PositionPresent.y, 0);
+            
             Updatepass();
 
-            if (Input.GetKeyDown(KeyCode.Mouse0))
+            if (Input.GetKeyDown(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f)
             {
                 clickcounter++;
                 if(clickcounter == 2)

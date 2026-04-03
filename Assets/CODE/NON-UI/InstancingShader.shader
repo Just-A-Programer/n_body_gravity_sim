@@ -72,7 +72,7 @@ Shader "Custom/InstancingShader"
                 
                 float maxmass = 10;
 
-                if (_RENDER_DOT_MODE == 0){ // default Color
+                if (_RENDER_DOT_MODE == 0 || (_RENDER_DOT_MODE != 1 && _RENDER_DOT_MODE != 2)){ // default Color
                     o.color = float4(_dotData[instanceID].color.x, _dotData[instanceID].color.y, _dotData[instanceID].color.z, 1);
                 }
                 else if (_RENDER_DOT_MODE == 1){ // speed

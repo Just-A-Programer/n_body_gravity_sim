@@ -50,7 +50,7 @@ public class UI_Handler : MonoBehaviour
 
     public void OnMSButtonClick(int id)
     {
-        for (int i = 0; i < SC_Button_Arr.Length-1; i++)
+        for (int i = 0; i < SC_Button_Arr.Length; i++)
         {
             //SC_Button_Arr[i].GetComponent<Image>().color = Color.white;
             SC_Button_Arr[i].SetActive(false);

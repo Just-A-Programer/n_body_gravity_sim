@@ -4,7 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Threading;
 using UnityEngine.Rendering;
+using SFB;
+using UnityEngine.SceneManagement;
 
 
 struct file_dot_str
@@ -39,9 +42,6 @@ public class Filehandler : MonoBehaviour
     lookup_str[] _lookup;
     
     
-    public string fileName;
-    public string fileDirectory;
-    string fileExtension = ".grav";
     string fileFullPath;
     
     private FileStream file;
@@ -117,6 +117,8 @@ public class Filehandler : MonoBehaviour
         Graphics.DrawMeshInstancedIndirect(dotMesh, 0, dotMaterial, new Bounds(Camera.main.transform.position, new Vector3(1,1,1)), dotargsbuffer, layer:10, castShadows:ShadowCastingMode.Off, receiveShadows:false);
     }
 
+
+    
     #region WRITING
 
     public void Startfile()
@@ -127,11 +129,14 @@ public class Filehandler : MonoBehaviour
         SetCanvas(2);
         
         //sorting out dot buffer
+
         gravScript.SortingDotBuffer();
         
         net_dot = gravScript.dotCount - gravScript.freeSpace;
         
         progressBar.SetActive(true);
+        
+        fileFullPath = StandaloneFileBrowser.SaveFilePanel("Save File", "", "Simuliacija.grav", "grav");
         
         file = File.Create(fileFullPath);
         
@@ -181,14 +186,16 @@ public class Filehandler : MonoBehaviour
     {
         current_frame++;
         
-        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, gravScript.dotCount, sizeof(float) * (3 + 2 + 2 + 1));
-        _dot = new file_dot_str[gravScript.dotCount];
+        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, net_dot, sizeof(float) * (3 + 2 + 2 + 1));
+        _dot = new file_dot_str[net_dot];
         _buffer.SetData(_dot);
         
         Graphics.CopyBuffer(gravScript.DotBuffer, _buffer);
         
+        
         _buffer.GetData(_dot);
-        _buffer.Dispose();
+        //_buffer.Dispose();
+        
 
         byte[] cahce = new byte[12];
         
@@ -227,7 +234,7 @@ public class Filehandler : MonoBehaviour
 
     #region READING
 
-    public void InitializeReading()
+    public void InitializeReading(string setpath)
     {
         READING = true;
         PAUSED = false;
@@ -237,20 +244,16 @@ public class Filehandler : MonoBehaviour
         SetCanvas(3);
         
         //searching for .grav files
-        string[] availableFiles = Directory.GetFiles(fileDirectory);
+        
+        if (setpath == "")
+            fileFullPath = StandaloneFileBrowser.OpenFilePanel("Open File", "", "grav", true)[0];
 
-        for (int i = 0; i < availableFiles.Length; i++)
+        else
         {
-            string[] parsed = availableFiles[i].Split('.');
-
-            if (parsed[parsed.Length - 1] == "grav")
-            {
-
-                file = new FileStream(availableFiles[i], FileMode.Open);
-
-                break;
-            }
+            fileFullPath = setpath;
         }
+
+        file = new FileStream(fileFullPath, FileMode.Open);
         
         //initializing reader and gathering data
         _reader = new BinaryReader(file);
@@ -259,17 +262,16 @@ public class Filehandler : MonoBehaviour
         rtime = _reader.ReadInt16();
         rdotcount = _reader.ReadInt32();
 
-        /*Debug.Log("rfps: " + rfps.ToString());
-        Debug.Log("rtime: " + rtime.ToString());
-        Debug.Log("rdotcount: " + rdotcount.ToString());*/
-        
+
+        _dot = new file_dot_str[rdotcount];
+        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, rdotcount, sizeof(float) * (3 + 2 + 2 + 1));
+        _buffer.SetData(_dot);
         
         //lookup
-        _lookup = new lookup_str[gravScript.dotCount];
+        _lookup = new lookup_str[rdotcount];
         
         for (int i = 0; i < rdotcount; i++)
         {
-            if (_dot[i].mass == 0) {continue;}
 
             byte[] mass_B = _reader.ReadBytes(3);
             Array.Resize(ref mass_B, 4);
@@ -288,7 +290,7 @@ public class Filehandler : MonoBehaviour
         //rendering
 
         FPSTARGETER.TARGET_FPS = rfps;
-        
+
         dotMesh = gravScript.DotMesh;
         dotMaterial = gravScript.DotMaterial;
         
@@ -304,6 +306,8 @@ public class Filehandler : MonoBehaviour
         dot_args[3] = (uint)dotMesh.GetBaseVertex(0);
         dotargsbuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, dot_args.Length, dot_args.Length * sizeof(uint));
 
+
+        
         dotargsbuffer.SetData(dot_args);
 
         dotMaterial.renderQueue = 4000;
@@ -312,12 +316,14 @@ public class Filehandler : MonoBehaviour
         _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, rdotcount, sizeof(float) * (3 + 2 + 2 + 1));
         
         dotMaterial.SetBuffer("_dotData", _buffer);
+        
     }
     
     public void readfile()
     {
         //setting up a dotbuffer
         _dot = new file_dot_str[rdotcount];
+        _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, rdotcount, sizeof(float) * (3 + 2 + 2 + 1));
         
         for (int i = 0; i < rdotcount; i++)
         {
@@ -342,6 +348,7 @@ public class Filehandler : MonoBehaviour
             _dot[i].velocity = new Vector2(velx_float, vely_float);
             _dot[i].color = _lookup[i].color;
             _dot[i].mass = _lookup[i].mass;
+
         }
         
         _buffer.SetData(_dot);
@@ -353,10 +360,17 @@ public class Filehandler : MonoBehaviour
     }
     #endregion
     
-    private void Awake()
+    public void Playsim()
     {
-        fileFullPath = fileDirectory + fileName + fileExtension;
+        try
+        {
+            _reader.Close();
+            _reader.Dispose();
+        }
+        catch (Exception e){ }
+        InitializeReading(fileFullPath);
     }
+    
     private void Update()
     {
         //writing
@@ -383,6 +397,7 @@ public class Filehandler : MonoBehaviour
             _reader.Dispose(); 
             _reader.Close();
         }
+        
         if (READING && !PAUSED) {readfile();}
         if (PAUSED || ENDED) {DisplayLastFrame();}
 
@@ -394,11 +409,20 @@ public class Filehandler : MonoBehaviour
     }
     private void OnApplicationQuit()
     {
-        _writer.Close();
-        File.Delete(fileDirectory + fileName + fileExtension);
+        //File.Delete(fileFullPath);
+        
+        //dotargsbuffer.Release();
+        
+        //_buffer.Release();
     }
 
-    void SetCanvas(int id)
+    public void ReloadScene()
+    {
+        string currentSceneName = SceneManager.GetActiveScene().name;
+        SceneManager.LoadScene(currentSceneName);
+    }
+    
+    public void SetCanvas(int id)
     {
         Draw_canvas.SetActive(false);
         Generate_canvas.SetActive(false);

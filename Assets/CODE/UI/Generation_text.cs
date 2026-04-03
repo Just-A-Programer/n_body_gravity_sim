@@ -4,6 +4,7 @@ using UnityEngine;
 public class Generation_text : MonoBehaviour
 { 
     public Filehandler fHandler;
+    public GameObject StopButton;
     public GameObject PlayButton;
     TMPro.TextMeshProUGUI text;
     string donetext;
@@ -30,11 +31,13 @@ public class Generation_text : MonoBehaviour
         {
             donetext = "Baigta!!";
             Time_end = Time_elapsed;
+            StopButton.SetActive(true);
             PlayButton.SetActive(true);
         }
         else
         {
             donetext = "";
+            StopButton.SetActive(false);
             PlayButton.SetActive(false);
         }
         
