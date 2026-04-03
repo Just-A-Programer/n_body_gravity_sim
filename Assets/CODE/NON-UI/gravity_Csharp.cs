@@ -116,6 +116,8 @@ public class gravity_Csharp : MonoBehaviour
     int addDotUIClicks = 0;
     public Add_Dot_UI addDotUI;
 
+    public bool AddDot;
+
 
 
     //MISCELLANEOUS
@@ -379,13 +381,15 @@ public class gravity_Csharp : MonoBehaviour
             ChangeBuffer.SetData(ChangeInput);
 
 
-            if (Input.GetKeyDown(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f)
+            if (Input.GetKeyDown(KeyCode.Mouse0) && Mouse_ui_poss.y > 300f || AddDot)
             {
                 addDotUIClicks++;
-                if (addDotUIClicks == 3)
+                
+                if (addDotUIClicks == 3 || AddDot)
                 {
                     addDotUIClicks = 0;
-
+                    AddDot = false;
+                    
                     if (newDotAmount >= freeSpace)
                     {
                         DotBuffer_TMP.Dispose();

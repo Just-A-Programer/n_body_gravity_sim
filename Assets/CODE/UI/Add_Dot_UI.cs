@@ -95,4 +95,10 @@ public class Add_Dot_UI : MonoBehaviour
 
         }
     }
+
+    public void AddButt()
+    {
+        gravityscript.AddDot = true;
+        finishingpass();
+    }
 }
