@@ -183,17 +183,8 @@ void Collision(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID)
                 
                 float2 testforce = float2(testRelativeSpeedAlongNorm * testNorm.x, testRelativeSpeedAlongNorm * testNorm.y);
                 
-                if (testforce.x == force.x && testforce.y == force.y)
-                {
-                    currCol = float3(0,1,0);
-                }
-                else
-                {
-                    currCol = float3(1, 0, 0);
-                }
                 
-                
-                
+                /*
                 // ;)
                 float mag = sqrt(jailerVel.x*jailerVel.x + jailerVel.y*jailerVel.y);
                 
@@ -206,9 +197,9 @@ void Collision(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID)
                 
                 float TPullOutForce = abs(min(dot(jailerVel,currVelo)/Tmag,0))*Tmag;
                 float Tphi = atan2((jailerPoss.y - currPoss.y), (jailerPoss.x - currPoss.x));
-                float2 TPullOutFVec = float2(TPullOutForce*cos(Tphi), TPullOutForce*sin(Tphi));
+                float2 TPullOutFVec = float2(TPullOutForce*cos(Tphi), TPullOutForce*sin(Tphi));*/
                 
-                calcImpulse[GroupIndex] -= (force - testforce);//( PullOutFVec); //- TPullOutFVec);//0*force -0*testforce +
+                calcImpulse[GroupIndex] -= (force - testforce);// - 0*TPullOutFVec - 0*PullOutFVec);//0*force -0*testforce +
             }
         }
     }
@@ -403,7 +394,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
                         id += floor(n);
                         dist++;
                     }
-                    else if(floor(changeDots[0].radius) <= dist){
+                    else if(floor(changeDots[0].radius) < dist){
                         break;
                     }
                     else{
@@ -414,7 +405,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
                     
                 }
 
-                inputData[Current_Target_index].position = float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
+                inputData[Current_Target_index].position = 1.1*float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
 
                 float2 newpos = inputData[Current_Target_index].position - changeDots[0].centerPos;
 
