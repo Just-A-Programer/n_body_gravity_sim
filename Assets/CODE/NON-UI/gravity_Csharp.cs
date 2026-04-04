@@ -303,22 +303,44 @@ public class gravity_Csharp : MonoBehaviour
         {
             computeShader.SetVector("fixedDeltaTime", floatToVector4(1f/fHandler.fps));
             computeShader.SetVector("COLLISION", floatToVector4((float)Convert.ToInt32(COLLISON)));
-
-            /*for (int i = 0; i < dotCount; i++)
+            
+            dot_str_Csharp[] _dot = new dot_str_Csharp[dotCount];
+            DotBuffer.GetData(_dot);
+            
+            for (int i = 0; i < dotCount; i++)
             {
                 if (_dot[i].color != new Vector3(1, 1, 1) && _dot[i].color != new Vector3(0, 0, 0))
                 {
                     Debug.Log(fHandler.current_frame + "   " + i + "   " + _dot[i].color);
                 }
-            }*/
+            }
             
             if (COMPUTE_SHADER)
             {
                 for (int i = 0; i < (float)dotCount / (float)batchSize; i++)
                 {
                     computeShader.SetInt("DispatchOffset", i * batchSize);
+                    /*computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
                     computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
-
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
+                    computeShader.Dispatch(collsion_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);*/
+                    
                     computeShader.Dispatch(dot_kernel, (int)MathF.Min(dotCount - i * batchSize, batchSize), 1, 1);
                 }
             }
@@ -523,11 +545,7 @@ public class gravity_Csharp : MonoBehaviour
         #endregion
 
     }
-
-    void addDotsFunc()
-    {
-        
-    }
+    
     
 
     public void RebindGPUBuffers(bool[] exc)

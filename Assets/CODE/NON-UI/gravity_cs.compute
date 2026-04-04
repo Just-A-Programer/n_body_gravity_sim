@@ -74,6 +74,7 @@ groupshared float2 calcForceTraj[ThreadSize];
 int debugint;
 
 
+
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
 RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 1   -in copy1
 
@@ -85,8 +86,8 @@ RWStructuredBuffer<trajectoryPath> trajPath;
 
 groupshared float2 calcForce[ThreadSize];
 groupshared float2 calcImpulse[ThreadSize];
-
-
+groupshared float2 AvrCorrectionVec[ThreadSize];
+groupshared int Correctioncount;
 
 float pithagoras(float2 vec)
 {
@@ -104,6 +105,126 @@ void Collision(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID)
     float2 currVelo = inputData[DispatchGroupIndex].velocity;
     float3 currCol = inputData[DispatchGroupIndex].color;
     
+    AvrCorrectionVec[GroupIndex] = float2(0,0);
+    Correctioncount = 0;
+    
+    uint dotCount = uint(miscData[0].dotCount);
+    
+    int B = 0;
+    int E = 0;
+    
+    int Start_cord = 0;
+    int End_cord = 0;
+    
+    
+    GroupMemoryBarrierWithGroupSync();
+    
+    //currColo = float3(1,1,1);
+    // calculate everybodies forces
+    if (DispatchGroupIndex < dotCount && currMass != 0)
+    {
+        B = floor((dotCount - 1.0) / ThreadSize);
+        E = (dotCount - 1.0) % ThreadSize;
+    
+        Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
+        End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
+    
+        
+        
+        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        {
+            float jailerMass = inputData[Current_Target_index].mass;
+            
+            // checks if object is not deleted
+            if (jailerMass <= 0) { continue; } 
+            
+            
+            float2 jailerPoss = inputData[Current_Target_index].position;
+            
+            // checks if its not the same obj
+            if ((currPoss.x == jailerPoss.x && currPoss.y == jailerPoss.y) || DispatchGroupIndex == Current_Target_index) { continue; }
+            //if (DispatchGroupIndex == Current_Target_index) {continue;}
+            
+            float OBJ_dist = distance(currPoss, jailerPoss);
+            
+            
+            if (OBJ_dist <= 1.0)
+            {
+                //const float2 midVec = currPoss + 0.5 * (jailerPoss - currPoss);
+                float2 midVec = float2(
+                    0.5*abs(jailerPoss.x - currPoss.x) + min(currPoss.x, jailerPoss.x),
+                    0.5*abs(jailerPoss.y - currPoss.y) + min(currPoss.y, jailerPoss.y)
+                    );
+                    
+                
+                if (jailerPoss.x == currPoss.x && jailerPoss.y == currPoss.y)
+                    currCol.x = 1.0;
+                
+                if (jailerPoss.x == 0.0 && jailerPoss.y == 0.0)
+                    currCol.y = 1.0;
+                
+                if (currPoss.x == 0.0 && currPoss.y == 0.0)
+                    currCol.z = 1.0;
+                
+                currCol.x = currPoss.x/pow(10, floor(log10(currPoss.x))+1);
+                currCol.y = currPoss.y/pow(10, floor(log10(currPoss.y))+1);
+                
+                
+                float alpha = atan2(midVec.y - currPoss.y, midVec.x - currPoss.x);
+                
+                float2 nPos = float2(
+                    midVec.x + 0.5*cos(alpha - PI),    
+                    midVec.y + 0.5*sin(alpha - PI)
+                    );
+                
+                
+                AvrCorrectionVec[GroupIndex] += nPos;
+                
+                InterlockedAdd(Correctioncount, 1);
+            }
+
+        }
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+
+    // main thread (which is 0) sums all of the other threads results into one singular result
+    if (GroupIndex == 0 && Correctioncount > 0)
+    {
+        float2 summVec = float2(0,0);
+        for (int i = 0; i < ThreadSize; i++)
+        {
+            summVec += AvrCorrectionVec[i];
+        }
+        
+        currPoss = float2(summVec.x/Correctioncount, summVec.y/Correctioncount);
+        
+    }
+    
+    GroupMemoryBarrierWithGroupSync();
+    // output
+    if (GroupIndex == 0)
+    {
+        inputData[DispatchGroupIndex].position = currPoss;
+        inputData[DispatchGroupIndex].velocity = currVelo;
+        inputData[DispatchGroupIndex].mass = currMass;
+        inputData[DispatchGroupIndex].color = currCol;
+    }
+}
+
+
+[numthreads(4, 4, 2)]
+void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
+
+    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset; //index of the current group
+    
+    
+    int currMass = inputData[DispatchGroupIndex].mass;
+    float2 currPoss = inputData[DispatchGroupIndex].position;
+    float2 currVelo = inputData[DispatchGroupIndex].velocity;
+    float3 currColo = inputData[DispatchGroupIndex].color;
+    
+    calcForce[GroupIndex] = float2(0,0);
     calcImpulse[GroupIndex] = float2(0,0);
     
     uint dotCount = uint(miscData[0].dotCount);
@@ -142,9 +263,12 @@ void Collision(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID)
             
             float OBJ_dist = distance(currPoss, jailerPoss);
             
+            currColo.x = currPoss.x/pow(10, floor(log10(currPoss.x))+1);
+            currColo.y = currPoss.y/pow(10, floor(log10(currPoss.y))+1);
             
             if (OBJ_dist <= 1.0)
             {
+                continue;
                 /*calcImpulse[GroupIndex] -= (((2.0 * jailerMass)/(currMass+jailerMass)) * ((dot(currVelo-jailerVel, currPoss-jailerPoss)) / (pow( pithagoras(currPoss - jailerPoss), 2.0))) * (currPoss - jailerPoss));
                 
                 inputData[Current_Target_index].velocity -= (((2.0 * currMass)/(jailerMass+currMass)) * ((dot(jailerVel-currVelo, jailerPoss-currPoss)) / (pow( pithagoras(jailerPoss - currPoss), 2.0))) * (jailerPoss - currPoss));
@@ -200,90 +324,7 @@ void Collision(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID)
                 float2 TPullOutFVec = float2(TPullOutForce*cos(Tphi), TPullOutForce*sin(Tphi));*/
                 
                 calcImpulse[GroupIndex] -= (force - testforce);// - 0*TPullOutFVec - 0*PullOutFVec);//0*force -0*testforce +
-            }
-        }
-    }
-    
-    GroupMemoryBarrierWithGroupSync();
-
-    // main thread (which is 0) sums all of the other threads results into one singular result
-    if (GroupIndex == 0)
-    {
-        
-        float2 summImpulse = float2(0,0);
-        for (int i = 0; i < ThreadSize; i++)
-        {
-            summImpulse += calcImpulse[i];
-        }
-        
-        currVelo += summImpulse;
-
-    }
-
-    GroupMemoryBarrierWithGroupSync();
-    // output
-    if (GroupIndex == 0)
-    {
-        inputData[DispatchGroupIndex].position = currPoss;
-        inputData[DispatchGroupIndex].velocity = currVelo;
-        inputData[DispatchGroupIndex].mass = currMass;
-        inputData[DispatchGroupIndex].color = currCol;
-    }
-}
-
-
-[numthreads(4, 4, 2)]
-void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
-
-    uint DispatchGroupIndex = (GroupID.x + GroupID.y * ThreadSize + GroupID.z * ThreadSize * ThreadSize) + DispatchOffset; //index of the current group
-    
-    
-    int currMass = inputData[DispatchGroupIndex].mass;
-    float2 currPoss = inputData[DispatchGroupIndex].position;
-    float2 currVelo = inputData[DispatchGroupIndex].velocity;
-    float3 currColo = inputData[DispatchGroupIndex].color;
-    
-    calcForce[GroupIndex] = float2(0,0);
-    
-    uint dotCount = uint(miscData[0].dotCount);
-    
-    int B = 0;
-    int E = 0;
-    
-    int Start_cord = 0;
-    int End_cord = 0;
-    
-    //currColo = float3(1,1,1);
-    // calculate everybodies forces
-    if (DispatchGroupIndex < dotCount && currMass != 0)
-    {
-        B = floor((dotCount - 1.0) / ThreadSize);
-        E = (dotCount - 1.0) % ThreadSize;
-    
-        Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
-        End_cord   = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
-    
-        
-        
-        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
-        {
-            float jailerMass = inputData[Current_Target_index].mass;
-            // checks if object is not deleted
-            if (jailerMass == 0) { continue; } 
-            
-            
-            float2 jailerPoss = inputData[Current_Target_index].position;
-            float2 jailerVel = inputData[Current_Target_index].velocity;
-            // checks if its not the same obj
-            
-            if (currPoss.x == jailerPoss.x && currPoss.y == jailerPoss.y) { continue; }
-            //if (DispatchGroupIndex == Current_Target_index) {continue;}
-            
-            float OBJ_dist = distance(currPoss, jailerPoss);
-            
-            
-            if (OBJ_dist <= 1.0)
-            {
+                
                 continue;
             }
             
@@ -301,10 +342,13 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     {
         
         float2 summForce = float2(0,0);
+        float2 summImpulse = float2(0,0);
         for (int i = 0; i < ThreadSize; i++)
         {
             summForce += calcForce[i];
+            summImpulse += calcImpulse[i];
         }
+
         
         //Coneverts calculated force to bodies velocity
         
@@ -312,6 +356,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
         //dont get why splitting vel calculations into 2 helps, but without it causes extra unwanted vel
         //impulse
+        currVelo += summImpulse;
         
         currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
         

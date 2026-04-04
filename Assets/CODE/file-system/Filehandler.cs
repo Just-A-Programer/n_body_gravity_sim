@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using UnityEngine.Rendering;
 using SFB;
+using Unity.VisualScripting;
 using UnityEngine.SceneManagement;
 
 
@@ -136,7 +137,7 @@ public class Filehandler : MonoBehaviour
         
         progressBar.SetActive(true);
         
-        fileFullPath = StandaloneFileBrowser.SaveFilePanel("Save File", "", "Simuliacija.grav", "grav");
+        fileFullPath = StandaloneFileBrowser.SaveFilePanel("Save File", "/home/laimis/Desktop/", ".grav", "grav");
         
         file = File.Create(fileFullPath);
         
@@ -196,6 +197,12 @@ public class Filehandler : MonoBehaviour
         _buffer.GetData(_dot);
         //_buffer.Dispose();
         
+        if (_dot[0].position.x.ToString() == "Nan"/* && _dot[0].position.y == 0 && _dot[0].velocity.x == 0 && _dot[0].velocity.y == 0*/)
+            Debug.LogError("Buffer gone null");
+        else
+        {
+            //Debug.Log(current_frame + ":  " + _dot[0].position.x + "  " + _dot[0].position.y + "  " + _dot[0].velocity.x + "  " + _dot[0].velocity.y);
+        }
 
         byte[] cahce = new byte[12];
         
@@ -246,7 +253,7 @@ public class Filehandler : MonoBehaviour
         //searching for .grav files
         
         if (setpath == "")
-            fileFullPath = StandaloneFileBrowser.OpenFilePanel("Open File", "", "grav", true)[0];
+            fileFullPath = StandaloneFileBrowser.OpenFilePanel("Open File", "/home/laimis/Desktop/", "grav", false)[0];
 
         else
         {
