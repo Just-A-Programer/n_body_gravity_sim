@@ -104,6 +104,12 @@ public class Filehandler : MonoBehaviour
             time = newtime;
     }
 
+    public void SetG(string str)
+    {
+        if (float.TryParse(str, out float newG))
+            gravScript.computeShader.SetFloat("G", newG); 
+    }
+
     public void PAUSERESUME(bool state)
     {
         PAUSED = !state;

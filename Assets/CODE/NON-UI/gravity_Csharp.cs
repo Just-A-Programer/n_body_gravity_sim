@@ -170,7 +170,8 @@ public class gravity_Csharp : MonoBehaviour
         cam = Camera.main;
 
         RENDER_DOT_MODE = 0;
-
+        DotMaterial.SetInt("_RENDER_DOT_MODE", RENDER_DOT_MODE);
+        
         #region SETTING UP CS BUFFERS
         
         DotBuffer =           new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopySource, dotCount, sizeof(float) * (3 + 2 + 2 + 1));
@@ -283,15 +284,17 @@ public class gravity_Csharp : MonoBehaviour
     
 
     private void Update()
-    { 
-        miscellaneousBuffer.GetData(miscellaneousInput);
-        dotCount = miscellaneousInput[0].dotCount;
-        freeSpace = miscellaneousInput[0].freeSpace;
-        
+    {
+        if (!fHandler.WRITING && !fHandler.READING)
+        {
+            miscellaneousBuffer.GetData(miscellaneousInput);
+            dotCount = miscellaneousInput[0].dotCount;
+            freeSpace = miscellaneousInput[0].freeSpace;
+        }
         /*dot_str_Csharp[] _dot = new dot_str_Csharp[dotCount];
-        
+
         DotBuffer.GetData(_dot);
-        
+
         if (_dot[0].position.x == Single.NaN)
         {
             Debug.Log(fHandler.current_frame);
@@ -336,6 +339,8 @@ public class gravity_Csharp : MonoBehaviour
         {
             Graphics.DrawMeshInstancedIndirect(DotMesh, 0, DotMaterial, new Bounds(cam.transform.position, new Vector3(1,1,1)), dotargsbuffer, layer:10, castShadows:ShadowCastingMode.Off, receiveShadows:false);
         }
+
+        if (fHandler.WRITING || fHandler.READING) { return;}
         
         #region mousemode
 
