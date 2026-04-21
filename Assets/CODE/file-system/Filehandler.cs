@@ -138,6 +138,9 @@ public class Filehandler : MonoBehaviour
         //sorting out dot buffer
 
         gravScript.SortingDotBuffer();
+        gravScript.mouse_MODE = -1;
+        gravScript.addDotUIClicks = 0;
+        GameObject.Destroy(gravScript.Mouse_influence_sphere);
         
         net_dot = gravScript.dotCount - gravScript.freeSpace;
         
@@ -203,12 +206,12 @@ public class Filehandler : MonoBehaviour
         _buffer.GetData(_dot);
         //_buffer.Dispose();
         
-        if (_dot[0].position.x.ToString() == "Nan"/* && _dot[0].position.y == 0 && _dot[0].velocity.x == 0 && _dot[0].velocity.y == 0*/)
-            Debug.LogError("Buffer gone null");
-        else
-        {
+        //if (_dot[0].position.x.ToString() == "Nan"/* && _dot[0].position.y == 0 && _dot[0].velocity.x == 0 && _dot[0].velocity.y == 0*/)
+        //    Debug.LogError("Buffer gone null");
+        //else
+        //{
             //Debug.Log(current_frame + ":  " + _dot[0].position.x + "  " + _dot[0].position.y + "  " + _dot[0].velocity.x + "  " + _dot[0].velocity.y);
-        }
+        //}
 
         byte[] cahce = new byte[12];
         

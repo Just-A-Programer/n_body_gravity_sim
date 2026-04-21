@@ -30,10 +30,10 @@ public class Add_dot_input : MonoBehaviour
                         value = gravscript.PositionPresent.y;
                         break;
                     case "xv":
-                        value = gravscript.VelocityPresent.x;
+                        value = -gravscript.VelocityPresent.x;
                         break;
                     case "yv":
-                        value = gravscript.VelocityPresent.y;
+                        value = -gravscript.VelocityPresent.y;
                         break;
                     case "m":
                         value = gravscript.MassPresent;
@@ -85,13 +85,13 @@ public class Add_dot_input : MonoBehaviour
                     gravscript.PositionPresent.x = value;
                     break;
                 case "yp":
-                    //gravscript.PositionPresent.y = value;
+                    gravscript.PositionPresent.y = value;
                     break;
                 case "xv":
-                    gravscript.VelocityPresent.x = value;
+                    gravscript.VelocityPresent.x = -value;
                     break;
                 case "yv":
-                    gravscript.VelocityPresent.y = value;
+                    gravscript.VelocityPresent.y = -value;
                     break;
                 case "m":
                     gravscript.MassPresent = value;

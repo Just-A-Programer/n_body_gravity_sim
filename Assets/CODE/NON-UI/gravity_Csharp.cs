@@ -111,9 +111,9 @@ public class gravity_Csharp : MonoBehaviour
 
     public TMPro.TMP_InputField masstext;
     public GameObject Mouse_Shere;
-    GameObject Mouse_influence_sphere;
+    public GameObject Mouse_influence_sphere;
     float Mouse_influence_sphere_radius = 25f;
-    int addDotUIClicks = 0;
+    public int addDotUIClicks = 0;
     public Add_Dot_UI addDotUI;
 
     public bool AddDot;
@@ -544,9 +544,9 @@ public class gravity_Csharp : MonoBehaviour
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(dot_kernel, "miscData",  miscellaneousBuffer);
             
-            computeShader.SetBuffer(trajectory_kernel, "inputData", DotBuffer);
+            /*computeShader.SetBuffer(trajectory_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(trajectory_kernel, "changeDots",  ChangeBuffer);
-            computeShader.SetBuffer(trajectory_kernel, "miscData",  miscellaneousBuffer);
+            computeShader.SetBuffer(trajectory_kernel, "miscData",  miscellaneousBuffer);*/
 
         }
 

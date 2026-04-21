@@ -33,7 +33,7 @@ public class Draw_trajectory : MonoBehaviour
     
     private void OnEnable()
     {
-        Ballposs = new Vector2(gameObject.transform.position.x, gameObject.transform.position.y);
+        /*Ballposs = new Vector2(gameObject.transform.position.x, gameObject.transform.position.y);
         
         kernel_id = grav_cs.FindKernel("CalcTrajectory");
         
@@ -46,12 +46,12 @@ public class Draw_trajectory : MonoBehaviour
         trajectoryPath_Csharp[] trajInput = new trajectoryPath_Csharp[distance];
         
         trajectoryBuffer.SetData(trajInput);
-        grav_cs.SetBuffer(kernel_id, "trajPath", trajectoryBuffer);
+        grav_cs.SetBuffer(kernel_id, "trajPath", trajectoryBuffer);*/
     }
 
     private void FixedUpdate()
     {
-        Ballposs = new Vector2(gameObject.transform.position.x, gameObject.transform.position.y);
+        /*Ballposs = new Vector2(gameObject.transform.position.x, gameObject.transform.position.y);
         
         if (frames % 10 == 0)
         {
@@ -71,7 +71,7 @@ public class Draw_trajectory : MonoBehaviour
 
             }
         }
-        frames++;
+        frames++;*/
     }
 
 
