@@ -70,10 +70,12 @@ float2 CenterBallPoss;
 float collisionDampaning = 8;
 groupshared float2 calcForceTraj[ThreadSize];
 
-
 int debugint;
 
-
+//Black hole
+int BlackHole_isActive;
+float BlackHole_Size;
+float BlackHole_Mass;
 
 RWStructuredBuffer<dotData> inputData;     // Copy ID: 0   -in copy1
 RWStructuredBuffer<dotData> inputData_TMP; // Copy ID: 1   -in copy1
