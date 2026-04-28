@@ -285,6 +285,8 @@ public class gravity_Csharp : MonoBehaviour
 
     private void Update()
     {
+
+        
         if (!fHandler.WRITING && !fHandler.READING)
         {
             miscellaneousBuffer.GetData(miscellaneousInput);
@@ -371,8 +373,8 @@ public class gravity_Csharp : MonoBehaviour
         if (mouse_MODE == 0)
         {
             float r = Mouse_influence_sphere_radius;
-
-            newDotAmount = Sigma_func(1, (int)Mathf.Floor(r), f => (int)Mathf.Floor((2 * MathF.PI) / (2 * (float)Math.Atan(0.5f / f))));
+            Debug.Log(r);
+            newDotAmount = Sigma_func(1, (int)Mathf.Floor(r - 1), f => (int)Mathf.Floor((2 * MathF.PI) / (2 * (float)Math.Atan(0.5f / f)))) + 1;
 
             computeShader.SetInt("newdotamount", newDotAmount);
             ChangeInput = new changeDotsStr_Csharp[1];

@@ -145,8 +145,8 @@ public class Filehandler : MonoBehaviour
         net_dot = gravScript.dotCount - gravScript.freeSpace;
         
         progressBar.SetActive(true);
-        
-        fileFullPath = StandaloneFileBrowser.SaveFilePanel("Save File", "/home/laimis/Desktop/", ".grav", "grav");
+
+        fileFullPath = StandaloneFileBrowser.SaveFilePanel("Save File", "", ".grav", "grav");
         
         file = File.Create(fileFullPath);
         
@@ -260,7 +260,7 @@ public class Filehandler : MonoBehaviour
         SetCanvas(3);
         
         //searching for .grav files
-        
+
         if (setpath == "")
             fileFullPath = StandaloneFileBrowser.OpenFilePanel("Open File", "/home/laimis/Desktop/", "grav", false)[0];
 
@@ -389,6 +389,12 @@ public class Filehandler : MonoBehaviour
     
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            StandaloneFileBrowser.OpenFilePanel("Open File", "", "", false);
+
+        }
+        
         //writing
         if (current_frame >= time * fps && WRITING)
         {

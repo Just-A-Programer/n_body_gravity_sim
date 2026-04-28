@@ -383,97 +383,109 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
 
 
 
-[numthreads(4, 4, 2)]
+[numthreads(1, 1, 1)]
 void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
+    
     if (changeDots[0].changeID == 69) { return; }
-    
-    
 
     int dotCount = miscData[0].dotCount;
     int freeSpace = miscData[0].freeSpace;
     int currFreeSpace = 0;
-
-    int Start_cord = 0;
-    int End_cord = 0;
-    
-    
-    int B = floor((dotCount - 1.0) / ThreadSize);
-    int E = (dotCount - 1.0) % ThreadSize;
-    
-    
-    Start_cord = (B + 1.0) * floor(min(E, (GroupIndex - 1.0)) + 1.0) + (B) * floor(max((GroupIndex - E - 1.0), 0.0));
-    End_cord = (B + 1.0) * floor(min(E, GroupIndex) + 1.0) + (B) * floor(max((GroupIndex - E), 0.0)) - 1.0;
-    
     
     // add
     if (changeDots[0].changeID == 0 && GroupIndex == 0) 
     {   
         int iteration = 0;
-        float dist = 1;
+        float dist = 0;
+        
+        float current_beta = 0.0; //in radians
+        float beta = 0.0;
+        float alpha = 0.0;
+        float n = 0;
+        int max_rotation_slots = 0;
+        int current_rotation_slot = 0;
+        
+        int dotsenclossed = 0;
+        int dotring = 0;
+        int totaldots = 0;
+        
+        for (int i = 0; i < floor(changeDots[0].radius); i++)
+        {
+            if (i == 0)
+                totaldots = 1;
+            else
+            {
+                totaldots += floor(PI/atan(0.5/i));
+            }
+        }
         
         for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
         {
-            if (inputData[Current_Target_index].mass == 0)
+            if (inputData[Current_Target_index].mass != 0) {continue;}
+                
+            if (dist != 0)
             {
+                beta = 2*atan(0.5/dist);
+                n = (2*PI)/beta;
+                max_rotation_slots = floor(n);
                 
-                float current_theta = 0.0; //in radians
-                float beta = 0.0;
-                float n = 0;
-                dist = 1;
-
-
-                iteration++;
-                InterlockedAdd(miscData[0].freeSpace, -1);
-                
-                inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
-                inputData[Current_Target_index].color = changeDots[0].changeDataCol;
-                inputData[Current_Target_index].velocity = changeDots[0].changeDataVel;
-                
-                
-                for (int id = 0; id < iteration; id++)
+                if (current_rotation_slot >= max_rotation_slots)
                 {
-                    beta = 2.0 * atan(0.5/dist);
-                    n = (2.0 * PI)/beta;
+                    dist++;
+                    current_rotation_slot = 0;
                     
-                    if ((id + floor(n)) < iteration){
-                        id += floor(n);
-                        dist++;
-                    }
-                    else if(floor(changeDots[0].radius) < dist){
-                        break;
-                    }
-                    else{
-                        float alpha = (2.0*PI)/floor(n);
-                        current_theta = abs(iteration-id)*alpha;
-                        break;         
-                    }
-                    
+                    dotsenclossed += dotring;
+                    dotring = 0;
                 }
-
-                inputData[Current_Target_index].position = 1.1*float2(dist * cos(current_theta), dist * sin(current_theta)) + changeDots[0].centerPos;
-
-                float2 newpos = inputData[Current_Target_index].position - changeDots[0].centerPos;
-
-                float2x2 Forcematrix = {
-                    cos(atan2(newpos.x, newpos.y)), -sin(atan2(newpos.x, newpos.y)),
-                    sin(atan2(newpos.x, newpos.y)),  cos(atan2(newpos.x, newpos.y))
-                };
-
-                //inputData[Current_Target_index].velocity -= mul(float2(1, 1) * (G*G / dist), Forcematrix);// mul(float2(1, 1) * sqrt((G * changeDots[0].changeDataMass * newdotamount) / newpos), Forcematrix);
                 
-
-                
-                if (floor(changeDots[0].radius) <= dist){
-                    break;
-                }
+                alpha = (2*PI)/floor(n);
+                current_beta = current_rotation_slot * alpha;
             }
+
+            if (floor(changeDots[0].radius) <= dist){break;}
+            
+            
+            
+            float2 relativepos = float2(dist * cos(current_beta), dist * sin(current_beta));
+            float relativeangle = current_beta - 0.5 * PI;
+            
+            float orbitspeed = 0.0;
+            if (dist > 0)
+                orbitspeed = sqrt((G*dotsenclossed*(changeDots[0].changeDataMass + 1))/dist); //sqrt((G*(totaldots-dotsenclossed)*changeDots[0].changeDataMass)/dist)
+            
+            float2 orbitvec = float2(orbitspeed * cos(relativeangle), orbitspeed * sin(relativeangle));
+            
+            dotring++;
+            inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
+            inputData[Current_Target_index].color = changeDots[0].changeDataCol;
+            inputData[Current_Target_index].velocity = changeDots[0].changeDataVel + orbitvec;
+            inputData[Current_Target_index].position = relativepos + changeDots[0].centerPos;
+            
+            
+            iteration++;
+            InterlockedAdd(miscData[0].freeSpace, -1);
+            if (dist == 0)
+            {
+                dist = 1;
+                dotsenclossed += dotring;
+                dotring = 0;
+            }
+            else
+            {
+                current_rotation_slot++;
+            }
+            
+            if (floor(changeDots[0].radius) <= dist){
+                break;
+            }
+            
 
         }
     }
     // remove
     else if (changeDots[0].changeID == 1) 
     {
-        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
         {
             float2 poss = inputData[Current_Target_index].position;
             if (distance(changeDots[0].centerPos, poss) <= changeDots[0].radius && inputData[Current_Target_index].mass != 0)
@@ -488,7 +500,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     // change color
     else if (changeDots[0].changeID == 2) 
     {
-        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
         {
             float2 poss = inputData[Current_Target_index].position;
             if (distance(changeDots[0].centerPos, poss) <= changeDots[0].radius)
@@ -500,7 +512,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
     // change mass
     else if (changeDots[0].changeID == 3) 
     {
-        for (int Current_Target_index = Start_cord; Current_Target_index <= End_cord; Current_Target_index++)
+        for (int Current_Target_index = 0; Current_Target_index <= dotCount; Current_Target_index++)
         {
             float2 poss = inputData[Current_Target_index].position;
             if (distance(changeDots[0].centerPos, poss) <= changeDots[0].radius)
@@ -545,7 +557,28 @@ void CopyBuffer(uint GroupIndex : SV_GroupIndex){
     }
 }
 
-
+/*for (int id = 0; id < iteration; id++)
+{
+    if (dist != 0)
+        beta = 2.0 * atan(0.5/dist);
+    else
+        beta = 0.0;
+    n = (2.0 * PI)/beta;
+      
+    if ((id + floor(n)) < iteration){
+        id += floor(n);
+        dist++;
+    }
+    else if(floor(changeDots[0].radius) < dist){
+        break;
+    }
+    else{
+        float alpha = (2.0*PI)/floor(n);
+        current_theta = abs(iteration-id)*alpha;
+        break;         
+    }
+       
+}*/
 [numthreads(4, 4, 2)]
 void CalcTrajectory(int GroupIndex : SV_GroupIndex)
 {
