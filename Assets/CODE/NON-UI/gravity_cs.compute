@@ -226,6 +226,13 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     float2 currVelo = inputData[DispatchGroupIndex].velocity;
     float3 currColo = inputData[DispatchGroupIndex].color;
     
+    //if the dot is in a black hole
+    float DistToCenter = distance(currPoss, float2(0, 0));
+    if (DistToCenter <= BlackHole_Size)
+    {
+        currMass = 0;
+    }
+    
     calcForce[GroupIndex] = float2(0,0);
     calcImpulse[GroupIndex] = float2(0,0);
     
@@ -340,7 +347,7 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
     GroupMemoryBarrierWithGroupSync();
 
     // main thread (which is 0) sums all of the other threads results into one singular result
-    if (GroupIndex == 0)
+    if (GroupIndex == 0 && currMass != 0)
     {
         
         float2 summForce = float2(0,0);
@@ -350,7 +357,11 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
             summForce += calcForce[i];
             summImpulse += calcImpulse[i];
         }
-
+        
+        //include the black holes force
+        float F_BH = G * ((currMass * BlackHole_Mass) / pow(DistToCenter, 2.0));
+        float alpha_BH = atan2(currPoss.y, currPoss.x);
+        summForce += float2(cos(alpha_BH) * F_BH, sin(alpha_BH) * F_BH);
         
         //Coneverts calculated force to bodies velocity
         
@@ -365,7 +376,6 @@ void CSMain(int GroupIndex : SV_GroupIndex, uint3 GroupID : SV_GroupID){
         currPoss -= currVelo * fixedDeltaTime.x;
 
         currVelo += (summForce / currMass) * fixedDeltaTime.x * 0.5;
-
     }
     
     GroupMemoryBarrierWithGroupSync();
@@ -460,7 +470,7 @@ void AddorRemoveDots(int GroupIndex : SV_GroupIndex){
             dotring++;
             inputData[Current_Target_index].mass = changeDots[0].changeDataMass;
             inputData[Current_Target_index].color = changeDots[0].changeDataCol;
-            inputData[Current_Target_index].velocity = changeDots[0].changeDataVel + orbitvec;
+            inputData[Current_Target_index].velocity = changeDots[0].changeDataVel; //+ orbitvec; dissambling rotation
             inputData[Current_Target_index].position = relativepos + changeDots[0].centerPos;
             
             

@@ -35,6 +35,7 @@ public class Filehandler : MonoBehaviour
     public FPS_TARGETING FPSTARGETER;
     public ComputeShader computeShader;
     public gravity_Csharp gravScript;
+    public Black_hole_handler BHHandler;
     public GameObject progressBar;
     
     GraphicsBuffer _buffer;
@@ -50,13 +51,15 @@ public class Filehandler : MonoBehaviour
     private BinaryReader _reader;
     
     [Header("File info")] 
-    public ushort fps;
-    public ushort time;
+    public int fps;
+    public int time;
     public int accuracy = (int)(1 / 0.001f);
 
-    public short rfps;
-    public short rtime;
+    public int rfps;
+    public int rtime;
     public int rdotcount;
+    public float rBHMass;
+    public float rBHSize;
     
     public uint current_frame = 0;
     private int net_dot;
@@ -73,12 +76,36 @@ public class Filehandler : MonoBehaviour
     uint[] dot_args = new uint[4];
     
     /*
+     
+    V1
     file header:
     2 B: fps 65536
     2 B: time limit ~109 min.
     4 B: dotcount >4B.
     total: 8 B
+    
+    lookup:
+       3 B: mass
+       3 B: color
+       total: 6 B
 
+       dot:
+       3 B: position x
+       3 B: position y
+       3 B: velocity x
+       3 B: velocity y
+       total: 12 B
+       
+    V2
+    file header:
+       4 B: fps >4B.
+       4 B: time limit >hours.
+       4 B: dotcount >4B.
+       4 B: Black Hole mass >4B.
+       4 B: Black Hole radius >4B.
+       44 B: Unused
+    total: 64 B
+    
     lookup:
     3 B: mass
     3 B: color
@@ -90,6 +117,13 @@ public class Filehandler : MonoBehaviour
     3 B: velocity x
     3 B: velocity y
     total: 12 B
+    
+    if dot info is all:
+       78 78 78 78 78 78
+       x  x  x  x  x  x
+    then the black hole has consumed the dot
+    and it shall be ignored.
+    
     */
 
     #region Set Sim variables
@@ -107,7 +141,10 @@ public class Filehandler : MonoBehaviour
     public void SetG(string str)
     {
         if (float.TryParse(str, out float newG))
-            gravScript.computeShader.SetFloat("G", newG); 
+        {
+            gravScript.computeShader.SetFloat("G", newG);
+            gravScript.G = newG;
+        }
     }
 
     public void PAUSERESUME(bool state)
@@ -153,17 +190,26 @@ public class Filehandler : MonoBehaviour
         byte[] DataFPS = BitConverter.GetBytes(fps);
         byte[] DataTime = BitConverter.GetBytes(time);
         byte[] DataDot = BitConverter.GetBytes(net_dot);
+        byte[] DataBHMass = BitConverter.GetBytes((int)Mathf.Clamp(Mathf.FloorToInt(BHHandler.BlackHole_Mass * 100), 0, 4294967296));
+        byte[] DataBHSize = BitConverter.GetBytes((int)Mathf.Clamp(Mathf.FloorToInt(BHHandler.BlackHole_Size * 100), 0, 4294967296));
+        byte[] DataUnused = new byte[ 64 - (5* sizeof(byte)) ];
         
-        Array.Resize(ref DataFPS, 2);
-        Array.Resize(ref DataTime, 2);
+        
+        Array.Resize(ref DataFPS, 4);
+        Array.Resize(ref DataTime, 4);
         Array.Resize(ref DataDot, 4);
+        Array.Resize(ref DataBHMass, 4);
+        Array.Resize(ref DataBHSize, 4);
         
         _writer = new BinaryWriter(file);
         _writer.Write(DataFPS);
         _writer.Write(DataTime);
         _writer.Write(DataDot);
+        _writer.Write(DataBHMass);
+        _writer.Write(DataBHSize);
         _writer.Flush();
-        
+        _writer.Write(DataUnused);
+        _writer.Flush();
         
         //creating lookup
         _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, gravScript.dotCount, sizeof(float) * (3 + 2 + 2 + 1));
@@ -217,29 +263,47 @@ public class Filehandler : MonoBehaviour
         
         for (int i = 0; i < gravScript.dotCount; i++)
         {
-            if (_dot[i].mass == 0) {continue;}
+            if (_dot[i].mass != 0)
+            {
+                
+                
+                //proccesing data for storage
+                Vector2Int pPos = new Vector2Int(Mathf.Clamp(Mathf.FloorToInt(_dot[i].position.x*accuracy)+8388607, 0, 16777216), Mathf.Clamp(Mathf.FloorToInt(_dot[i].position.y*accuracy)+8388607, 0, 16777216));
+                byte[] pPosx = BitConverter.GetBytes(pPos.x);
+                byte[] pPosy = BitConverter.GetBytes(pPos.y);
             
-            //proccesing data for storage
-            Vector2Int pPos = new Vector2Int(Mathf.Clamp(Mathf.FloorToInt(_dot[i].position.x*accuracy)+8388607, 0, 16777216), Mathf.Clamp(Mathf.FloorToInt(_dot[i].position.y*accuracy)+8388607, 0, 16777216));
-            byte[] pPosx = BitConverter.GetBytes(pPos.x);
-            byte[] pPosy = BitConverter.GetBytes(pPos.y);
+                Vector2Int pVel = new Vector2Int(Mathf.Clamp(Mathf.FloorToInt(_dot[i].velocity.x*accuracy)+8388607, 0, 16777216), Mathf.Clamp(Mathf.FloorToInt(_dot[i].velocity.y*accuracy)+8388607, 0, 16777216));
+                byte[] pVelx = BitConverter.GetBytes(pVel.x);
+                byte[] pVely = BitConverter.GetBytes(pVel.y);
             
-            Vector2Int pVel = new Vector2Int(Mathf.Clamp(Mathf.FloorToInt(_dot[i].velocity.x*accuracy)+8388607, 0, 16777216), Mathf.Clamp(Mathf.FloorToInt(_dot[i].velocity.y*accuracy)+8388607, 0, 16777216));
-            byte[] pVelx = BitConverter.GetBytes(pVel.x);
-            byte[] pVely = BitConverter.GetBytes(pVel.y);
-            
-            cahce[0] = pPosx[0];
-            cahce[1] = pPosx[1];
-            cahce[2] = pPosx[2];
-            cahce[3] = pPosy[0];
-            cahce[4] = pPosy[1];
-            cahce[5] = pPosy[2];
-            cahce[6] = pVelx[0];
-            cahce[7] = pVelx[1];
-            cahce[8] = pVelx[2];
-            cahce[9] = pVely[0];
-            cahce[10] = pVely[1];
-            cahce[11] = pVely[2];
+                cahce[0] = pPosx[0];
+                cahce[1] = pPosx[1];
+                cahce[2] = pPosx[2];
+                cahce[3] = pPosy[0];
+                cahce[4] = pPosy[1];
+                cahce[5] = pPosy[2];
+                cahce[6] = pVelx[0];
+                cahce[7] = pVelx[1];
+                cahce[8] = pVelx[2];
+                cahce[9] = pVely[0];
+                cahce[10] = pVely[1];
+                cahce[11] = pVely[2];
+            }
+            else
+            {
+                cahce[0] = 120;
+                cahce[1] = 120;
+                cahce[2] = 120;
+                cahce[3] = 120;
+                cahce[4] = 120;
+                cahce[5] = 120;
+                cahce[6] = 120;
+                cahce[7] = 120;
+                cahce[8] = 120;
+                cahce[9] = 120;
+                cahce[10] = 120;
+                cahce[11] = 120;
+            }
             
             _writer.Write(cahce);
             _writer.Flush();
@@ -274,14 +338,30 @@ public class Filehandler : MonoBehaviour
         //initializing reader and gathering data
         _reader = new BinaryReader(file);
         
-        rfps = _reader.ReadInt16();
-        rtime = _reader.ReadInt16();
+        rfps = _reader.ReadInt32();
+        rtime = _reader.ReadInt32();
         rdotcount = _reader.ReadInt32();
-
+        rBHMass = (float)_reader.ReadInt32()/100;
+        rBHSize = (float)_reader.ReadInt32()/100;
+        _reader.ReadBytes(64-(5*sizeof(byte)));
 
         _dot = new file_dot_str[rdotcount];
         _buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured | GraphicsBuffer.Target.CopyDestination, rdotcount, sizeof(float) * (3 + 2 + 2 + 1));
         _buffer.SetData(_dot);
+        
+        //black hole
+        if (rBHMass != 0)
+        {
+            BHHandler.BlackHole_isActive = true;
+            BHHandler.BlackHole.SetActive(true);
+            BHHandler.BlackHole.transform.localScale = new Vector2(2*rBHSize, 2*rBHSize);
+        }
+        else
+        {
+            BHHandler.BlackHole_isActive = false;
+            BHHandler.BlackHole.SetActive(false);
+            BHHandler.BlackHole.transform.localScale = new Vector2(0, 0);
+        }
         
         //lookup
         _lookup = new lookup_str[rdotcount];
@@ -352,8 +432,16 @@ public class Filehandler : MonoBehaviour
             Array.Resize(ref posy_B, 4);
             Array.Resize(ref velx_B, 4);
             Array.Resize(ref vely_B, 4);
-               
-                
+
+            if (posx_B[0] == 120 && posy_B[0] == 120 && velx_B[0] == 120 && vely_B[0] == 120)
+            {
+                _dot[i].position = new Vector2(0,0);
+                _dot[i].velocity = new Vector2(0,0);
+                _dot[i].color = new Vector3(0,0,0);
+                _dot[i].mass = 0;
+                continue;
+            }
+            
             float posx_float = (float)(BitConverter.ToInt32(posx_B) - 8388607) / accuracy;
             float posy_float = (float)(BitConverter.ToInt32(posy_B) - 8388607) / accuracy;
             float velx_float = (float)(BitConverter.ToInt32(velx_B) - 8388607) / accuracy;

@@ -373,7 +373,7 @@ public class gravity_Csharp : MonoBehaviour
         if (mouse_MODE == 0)
         {
             float r = Mouse_influence_sphere_radius;
-            Debug.Log(r);
+
             newDotAmount = Sigma_func(1, (int)Mathf.Floor(r - 1), f => (int)Mathf.Floor((2 * MathF.PI) / (2 * (float)Math.Atan(0.5f / f)))) + 1;
 
             computeShader.SetInt("newdotamount", newDotAmount);
@@ -541,8 +541,8 @@ public class gravity_Csharp : MonoBehaviour
         //GRAPHICS BUFFERS
         if (exc[0])
         {
-            computeShader.SetBuffer(collsion_kernel, "inputData", DotBuffer);
-            computeShader.SetBuffer(collsion_kernel, "miscData", miscellaneousBuffer);
+            //computeShader.SetBuffer(collsion_kernel, "inputData", DotBuffer);
+            //computeShader.SetBuffer(collsion_kernel, "miscData", miscellaneousBuffer);
             computeShader.SetBuffer(dot_kernel, "inputData", DotBuffer);
             computeShader.SetBuffer(dot_kernel, "miscData",  miscellaneousBuffer);
             

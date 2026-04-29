@@ -5,20 +5,22 @@ using Image = UnityEngine.UI.Image;
 
 public class UI_Handler : MonoBehaviour
 {
-    private GameObject[] MS_Button_Arr = new GameObject[4];
-    private GameObject[] SC_Button_Arr = new GameObject[4];
+    private GameObject[] MS_Button_Arr = new GameObject[5];
+    private GameObject[] SC_Button_Arr = new GameObject[5];
     
     [Header("MASTER BUTTONS")] 
     public GameObject MS_AddDots;
     public GameObject MS_Delete;
     public GameObject MS_ChangeColor;
     public GameObject MS_ChangeMass;
+    public GameObject MS_BH;
     
     [Header("SECONDARY BUTTON GROUPS")]
     public GameObject SC_AddDots_Group;
     public GameObject SC_Delete_Group;
     public GameObject SC_ChangeColor_Group;
     public GameObject SC_ChangeMass_Group;
+    public GameObject SC_BH_Group;
 
     private void Start()
     {
@@ -27,12 +29,13 @@ public class UI_Handler : MonoBehaviour
         MS_Button_Arr[1] = MS_Delete;
         MS_Button_Arr[2] = MS_ChangeColor;
         MS_Button_Arr[3] = MS_ChangeMass;
-        
+        MS_Button_Arr[4] = MS_BH;
         
         SC_Button_Arr[0] = SC_AddDots_Group;
         SC_Button_Arr[1] = SC_Delete_Group;
         SC_Button_Arr[2] = SC_ChangeColor_Group;
         SC_Button_Arr[3] = SC_ChangeMass_Group;
+        SC_Button_Arr[4] = SC_BH_Group;
         
     }
 

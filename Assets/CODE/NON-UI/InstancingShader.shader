@@ -87,6 +87,7 @@ Shader "Custom/InstancingShader"
 
                 float4 wpos = mul(TranslationMatrix(float3(0,0,0)), v.vertex + float4(_dotData[instanceID].position, 0, 0));
                 o.pos = mul(UNITY_MATRIX_VP, wpos);
+                
                 return o;
             }
 
